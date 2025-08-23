@@ -34027,5 +34027,36 @@
       "1": "1216015828648082646312597"
     },
     "rewards": {}
+  },
+  {
+    "domainId": 0,
+    "epoch": 2217,
+    "startBlock": 4117937,
+    "startHash": "0xbe81014e4e2dfa5ef7e43850b05e3fcbf88ee37f6bc2fbb021c70e21521362a5",
+    "endBlock": 4118060,
+    "endHash": "0xc3c3e3eef1db7aef45e6dcf93a03ae6e34999941d37844ac052d689029258014",
+    "totalStake": "2826718301836715315324971",
+    "operatorStakes": {
+      "0": "1610702471853208450277736",
+      "1": "1216015829983506865047235"
+    },
+    "rewards": {
+      "0": "408271397644120",
+      "1": "612407096466180"
+    }
+  },
+  {
+    "domainId": 0,
+    "epoch": 2218,
+    "startBlock": 4118061,
+    "startHash": "0x14f5d2dc3b66152550e14c2fbc0ac2f328100a7fecc5a9f45d6560a2ac8a772b",
+    "endBlock": 4118066,
+    "endHash": "0xcdb49227f6d919b3700712fc95d084e6e02b59be14787ed9be0b462777fc5ee1",
+    "totalStake": "2826718302847187024494169",
+    "operatorStakes": {
+      "0": "1610702472257397133945415",
+      "1": "1216015830589789890548754"
+    },
+    "rewards": {}
   }
 ]
