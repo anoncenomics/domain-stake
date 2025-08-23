@@ -80,6 +80,10 @@ function formatAmount(x: string | undefined, unit: 'AI3' | 'Shannons'){
   return unit === 'AI3' ? formatTokensFromShannons(x, 3) : formatBig(x);
 }
 
+function formatRewardsAmount(x: string | undefined, unit: 'AI3' | 'Shannons'){
+  return unit === 'AI3' ? formatTokensFromShannons(x, 6) : formatBig(x);
+}
+
 function formatTokensIntegerFromShannons(x?: string){
   if (!x) return '';
   try {
@@ -165,13 +169,14 @@ class ChartErrorBoundary extends React.Component<{ children: React.ReactNode }, 
 }
 
 function StatCard({ label, value, live = false }: { label: string; value: string | number; live?: boolean }){
+  const [hover, setHover] = useState(false);
   return (
-    <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '12px' }}>
-      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>
+    <div onMouseEnter={()=>setHover(true)} onMouseLeave={()=>setHover(false)} style={{ background: 'white', borderRadius: '16px', border: '1px solid #e5e7eb', boxShadow: hover ? '0 8px 24px rgba(0,0,0,0.12)' : '0 2px 10px rgba(0,0,0,0.08)', padding: '18px', transition: 'box-shadow 0.2s ease, transform 0.2s ease', transform: hover ? 'translateY(-1px)' : 'none' }}>
+      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: '#6b7280', marginBottom: '6px' }}>
         {label}
         {live && <span title="Live" style={{ width: 6, height: 6, borderRadius: 9999, background: '#10B981', display: 'inline-block' }} />}
       </div>
-      <div style={{ fontSize: '18px', fontWeight: 600 }}>{String(value)}</div>
+      <div style={{ fontSize: '20px', fontWeight: 700 }}>{String(value)}</div>
     </div>
   );
 }
@@ -310,7 +315,7 @@ export default function Dashboard(){
       lastEpoch: last.epoch,
       totalStake: unit === 'AI3' ? formatTokensIntegerFromShannons(last.totalStake) : formatAmount(last.totalStake, unit),
       operators,
-      rewardsTotal: formatAmount(rewardsTotalBig.toString(), unit)
+      rewardsTotal: formatRewardsAmount(rewardsTotalBig.toString(), unit)
     } as const;
   }, [mergedRows, unit]);
 
@@ -319,8 +324,23 @@ export default function Dashboard(){
   const [showOp1, setShowOp1] = useState(true);
   const [stakeScale, setStakeScale] = useState<'auto' | 'fit' | 'log'>('auto');
   const [rewardsScale, setRewardsScale] = useState<'auto' | 'fit' | 'log'>('log');
-  const [showRaw, setShowRaw] = useState(false);
+
   const [brush, setBrush] = useState<{ startIndex: number; endIndex: number } | null>(null);
+  const [hoverStake, setHoverStake] = useState(false);
+  const [hoverRewards, setHoverRewards] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const update = () => setIsMobile(typeof window !== 'undefined' && window.innerWidth < 640);
+    update();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, []);
+
+  const microFont = isMobile ? 10 : 11;
+  const segPad = isMobile ? '4px 8px' : '6px 10px';
+  const chartHeight = isMobile ? 220 : 256;
+  const chartPadding = isMobile ? '16px' : '24px';
 
   const COLORS = {
     total: '#111827',
@@ -419,7 +439,7 @@ export default function Dashboard(){
 
   return (
     <div style={{ minHeight: '100vh', padding: '24px', background: '#f9fafb' }}>
-      <h1 style={{ fontSize: '20px', fontWeight: 600, marginBottom: '16px' }}>Auto EVM (domain 0) — Epoch Staking & Rewards</h1>
+      <h1 style={{ fontSize: '22px', fontWeight: 600, color: '#111827', marginBottom: '16px' }}>Auto EVM (domain 0) — Epoch Staking & Rewards</h1>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px', marginBottom: '12px' }}>
         <StatCard label="Latest epoch" value={summary.lastEpoch} live={isSummaryLive} />
@@ -428,8 +448,8 @@ export default function Dashboard(){
         <StatCard label="Rewards (latest)" value={summary.rewardsTotal} live={isSummaryLive} />
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '24px' }}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: isMobile ? '16px' : '24px' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: isMobile ? '4px' : '6px', alignItems: 'center', background: '#f5f5f5', border: '1px solid #e5e7eb', borderRadius: '12px', padding: isMobile ? '8px 10px' : '10px 12px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', position: 'sticky', top: 0, zIndex: 20 }}>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', marginRight: '8px' }}>
             <span
               title={liveStatus}
@@ -449,59 +469,101 @@ export default function Dashboard(){
                 setIsLive(next);
                 if (!next) setLiveStatus('idle');
               }}
-              style={{ padding: '6px 10px', fontSize: '12px', border: '1px solid #e5e7eb', borderRadius: '8px', background: 'white', cursor: 'pointer' }}
+              style={{ 
+                padding: segPad, 
+                fontSize: microFont, 
+                border: '1px solid #d1d5db', 
+                borderRadius: '8px', 
+                background: 'white', 
+                cursor: 'pointer', 
+                transition: 'all 0.15s ease-in-out',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                fontWeight: 500
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.boxShadow = '0 2px 6px rgba(0,0,0,0.15)';
+                e.currentTarget.style.transform = 'translateY(-1px)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
+                e.currentTarget.style.transform = 'translateY(0)';
+              }}
             >{isLive ? 'Live: On' : 'Live: Off'}</button>
             {isLive && lastLiveAt && (
-              <span style={{ fontSize: '12px', color: '#6b7280' }}>
+              <span style={{ fontSize: '11px', color: '#6b7280' }}>
                 Updated {Math.max(0, Math.floor(((Date.now() - lastLiveAt) / 1000)))}s ago
               </span>
             )}
           </div>
-          <div style={{ fontSize: '12px', color: '#6b7280' }}>Range:</div>
-          <div style={{ display: 'inline-flex', border: '1px solid #e5e7eb', borderRadius: '8px', overflow: 'hidden' }}>
+          <div style={{ fontSize: microFont, color: '#6b7280' }}>Range:</div>
+          <div style={{ display: 'inline-flex', border: '1px solid #d1d5db', borderRadius: '8px', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
             {(['50','200','All'] as const).map(key => (
               <button
                 key={key}
                 onClick={() => setRange(key)}
                 style={{
-                  padding: '6px 10px',
-                  fontSize: '12px',
+                  padding: segPad,
+                  fontSize: microFont,
                   background: range === key ? '#111827' : 'white',
                   color: range === key ? 'white' : '#111827',
                   border: 'none',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease-in-out',
+                  fontWeight: range === key ? 600 : 500
+                }}
+                onMouseEnter={(e) => {
+                  if (range !== key) {
+                    e.currentTarget.style.background = '#f3f4f6';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (range !== key) {
+                    e.currentTarget.style.background = 'white';
+                  }
                 }}
               >{key === 'All' ? 'All' : `Last ${key}`}</button>
             ))}
           </div>
-          <div style={{ width: '1px', height: '20px', background: '#e5e7eb', margin: '0 4px' }} />
-          <div style={{ fontSize: '12px', color: '#6b7280' }}>Unit:</div>
-          <div style={{ display: 'inline-flex', border: '1px solid #e5e7eb', borderRadius: '8px', overflow: 'hidden' }}>
+          <div style={{ width: '1px', height: '20px', background: '#d1d5db', margin: '0 4px' }} />
+          <div style={{ fontSize: microFont, color: '#6b7280' }}>Unit:</div>
+          <div style={{ display: 'inline-flex', border: '1px solid #d1d5db', borderRadius: '8px', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
             {(['AI3','Shannons'] as const).map(key => (
               <button
                 key={key}
                 onClick={() => setUnit(key)}
                 style={{
-                  padding: '6px 10px',
-                  fontSize: '12px',
+                  padding: segPad,
+                  fontSize: microFont,
                   background: unit === key ? '#111827' : 'white',
                   color: unit === key ? 'white' : '#111827',
                   border: 'none',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease-in-out',
+                  fontWeight: unit === key ? 600 : 500
+                }}
+                onMouseEnter={(e) => {
+                  if (unit !== key) {
+                    e.currentTarget.style.background = '#f3f4f6';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (unit !== key) {
+                    e.currentTarget.style.background = 'white';
+                  }
                 }}
               >{key}</button>
             ))}
           </div>
-          <div style={{ width: '1px', height: '20px', background: '#e5e7eb', margin: '0 4px' }} />
+          <div style={{ width: '1px', height: '20px', background: '#f3f4f6', margin: '0 4px' }} />
           {/* moved per-chart scale controls into each chart container */}
-          <div style={{ fontSize: '12px', color: '#6b7280' }}>Operators:</div>
-          <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px' }}>
-            <input type="checkbox" checked={showOp0} onChange={(e)=>setShowOp0(e.target.checked)} />
-            <span>0</span>
+          <div style={{ fontSize: microFont, color: '#6b7280' }}>Operators:</div>
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: microFont, padding: '4px 6px', borderRadius: '6px', background: 'white', border: '1px solid #d1d5db', cursor: 'pointer', transition: 'all 0.15s ease-in-out' }}>
+            <input type="checkbox" checked={showOp0} onChange={(e)=>setShowOp0(e.target.checked)} style={{ accentColor: '#111827' }} />
+            <span style={{ fontWeight: 500 }}>0</span>
           </label>
-          <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px' }}>
-            <input type="checkbox" checked={showOp1} onChange={(e)=>setShowOp1(e.target.checked)} />
-            <span>1</span>
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: microFont, padding: '4px 6px', borderRadius: '6px', background: 'white', border: '1px solid #d1d5db', cursor: 'pointer', transition: 'all 0.15s ease-in-out' }}>
+            <input type="checkbox" checked={showOp1} onChange={(e)=>setShowOp1(e.target.checked)} style={{ accentColor: '#111827' }} />
+            <span style={{ fontWeight: 500 }}>1</span>
           </label>
           <div style={{ flex: 1 }} />
           <button onClick={() => {
@@ -509,9 +571,10 @@ export default function Dashboard(){
             const opsRewardKeys = Array.from(new Set(displayRows.flatMap((r: any) => Object.keys(r.rewards || {})))).sort((a,b)=>Number(a)-Number(b));
             const header = ['epoch','startBlock','endBlock','totalStake', ...opsStakeKeys.map(k=>`stake${k}`), ...opsRewardKeys.map(k=>`rewards${k}`)];
             const csvRows = displayRows.map((r: any) => {
-              const totalStakeStr = unit === 'AI3' ? tokensPlainFromShannons(r.totalStake, 3) : String(r.totalStake);
-              const stakeVals = opsStakeKeys.map((k)=> unit === 'AI3' ? tokensPlainFromShannons(r.operatorStakes?.[k] ?? '0', 3) : String(r.operatorStakes?.[k] ?? '0'));
-              const rewardVals = opsRewardKeys.map((k)=> unit === 'AI3' ? tokensPlainFromShannons(r.rewards?.[k] ?? '0', 3) : String(r.rewards?.[k] ?? '0'));
+              // Use raw values without any formatting - keep as bigints/shannons
+              const totalStakeStr = String(r.totalStake ?? '0');
+              const stakeVals = opsStakeKeys.map((k)=> String(r.operatorStakes?.[k] ?? '0'));
+              const rewardVals = opsRewardKeys.map((k)=> String(r.rewards?.[k] ?? '0'));
               return [r.epoch, r.startBlock, r.endBlock, totalStakeStr, ...stakeVals, ...rewardVals];
             });
             const csv = [header.join(','), ...csvRows.map((r:any)=>r.join(','))].join('\n');
@@ -520,40 +583,58 @@ export default function Dashboard(){
             const a = document.createElement('a');
             a.href = url;
             const latestEpoch = baseRows.length ? baseRows[baseRows.length - 1].epoch : '';
-            a.download = `epochs_${unit.toLowerCase()}${latestEpoch !== '' ? `_e${latestEpoch}` : ''}.csv`;
+            a.download = `epochs_raw${latestEpoch !== '' ? `_e${latestEpoch}` : ''}.csv`;
             a.click();
             URL.revokeObjectURL(url);
-          }} style={{ padding: '6px 10px', fontSize: '12px', border: '1px solid #e5e7eb', borderRadius: '8px', background: 'white', cursor: 'pointer' }}>Download CSV</button>
+          }} style={{ 
+            padding: segPad, 
+            fontSize: microFont, 
+            border: '1px solid #d1d5db', 
+            borderRadius: '8px', 
+            background: 'white', 
+            cursor: 'pointer', 
+            transition: 'all 0.15s ease-in-out',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+            fontWeight: 500
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.boxShadow = '0 2px 6px rgba(0,0,0,0.15)';
+            e.currentTarget.style.transform = 'translateY(-1px)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
+            e.currentTarget.style.transform = 'translateY(0)';
+          }}>Download CSV</button>
         </div>
-        <div style={{ background: 'white', borderRadius: '16px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)', padding: '16px' }}>
-          <h2 style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '16px', fontWeight: 500, marginBottom: '8px' }}>
+        <div onMouseEnter={() => setHoverStake(true)} onMouseLeave={() => setHoverStake(false)} style={{ background: 'white', borderRadius: '16px', border: '1px solid #e5e7eb', boxShadow: hoverStake ? '0 8px 24px rgba(0,0,0,0.12)' : '0 2px 10px rgba(0,0,0,0.08)', transition: 'box-shadow 0.2s ease-in-out', padding: chartPadding }}>
+          <h2 style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '18px', fontWeight: 500, color: '#111827', paddingBottom: '10px', marginBottom: '14px', borderBottom: '1px solid #f3f4f6' }}>
             <span>Total Stake by Epoch</span>
             {isLive && <span title="Live" style={{ width: 6, height: 6, borderRadius: 9999, background: '#10B981', display: 'inline-block' }} />}
           </h2>
-          <div style={{ height: '256px' }}>
+          <div style={{ height: chartHeight }}>
             <ChartErrorBoundary>
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartData} margin={{ top: 10, right: 24, left: 8, bottom: 24 }} syncId="epochs" syncMethod="index">
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="epoch" tick={{ fontSize: 12 }} />
-                <YAxis tickFormatter={(v)=>formatYAxisTick(Number(v), unit)} tick={{ fontSize: 12 }} domain={stakeYDomain} scale={stakeScale === 'log' ? 'log' : 'auto'} allowDataOverflow />
+                <CartesianGrid stroke="#e5e7eb" strokeDasharray="3 3" />
+                <XAxis dataKey="epoch" tick={{ fontSize: microFont }} />
+                <YAxis tickFormatter={(v)=>formatYAxisTick(Number(v), unit)} tick={{ fontSize: microFont }} domain={stakeYDomain} scale={stakeScale === 'log' ? 'log' : 'auto'} allowDataOverflow />
                 <Tooltip formatter={(v)=>`${formatTooltipNumber(Number(v), unit, 'stake')} ${unit}`} labelFormatter={(l)=>`Epoch ${l}`} />
                 <Line type="monotone" dataKey="totalStake" dot={false} name="Total Stake" strokeWidth={2} stroke={COLORS.total} />
                 {showOp0 && <Line type="monotone" dataKey="stake0" dot={false} name="Operator 0 Stake" stroke={COLORS.op0} strokeDasharray="4 2" />}
                 {showOp1 && <Line type="monotone" dataKey="stake1" dot={false} name="Operator 1 Stake" stroke={COLORS.op1} strokeDasharray="4 2" />}
-                <Brush dataKey="epoch" height={14} stroke="#9CA3AF" travellerWidth={8} onChange={handleBrushChange} {...sharedBrushProps} />
+                <Brush dataKey="epoch" height={isMobile ? 12 : 14} stroke="#9CA3AF" travellerWidth={isMobile ? 6 : 8} onChange={handleBrushChange} {...sharedBrushProps} />
               </LineChart>
             </ResponsiveContainer>
             </ChartErrorBoundary>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8, flexWrap: 'wrap', gap: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', marginTop: 8, flexWrap: 'wrap', gap: 8 }}>
               <div style={{ display: 'inline-flex', border: '1px solid #e5e7eb', borderRadius: '8px', overflow: 'hidden', flexShrink: 0 }}>
                 {(['auto','fit','log'] as const).map(key => (
                   <button
                     key={key}
                     onClick={() => setStakeScale(key)}
                     style={{
-                      padding: '4px 8px',
-                      fontSize: '11px',
+                      padding: isMobile ? '3px 6px' : '4px 8px',
+                      fontSize: microFont,
                       textTransform: 'capitalize',
                       background: stakeScale === key ? '#111827' : 'white',
                       color: stakeScale === key ? 'white' : '#111827',
@@ -563,57 +644,39 @@ export default function Dashboard(){
                   >{key}</button>
                 ))}
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', justifyContent: 'flex-end', flex: 1, minWidth: 0 }}>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ width: 12, height: 2, background: COLORS.total, display: 'inline-block' }} />
-                  <span style={{ fontSize: 12, color: '#6b7280' }}>Total Stake</span>
-                </span>
-                {showOp0 && (
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ width: 12, height: 2, background: COLORS.op0, display: 'inline-block' }} />
-                    <span style={{ fontSize: 12, color: '#6b7280' }}>Operator 0</span>
-                  </span>
-                )}
-                {showOp1 && (
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ width: 12, height: 2, background: COLORS.op1, display: 'inline-block' }} />
-                    <span style={{ fontSize: 12, color: '#6b7280' }}>Operator 1</span>
-                  </span>
-                )}
-              </div>
             </div>
           </div>
         </div>
 
-        <div style={{ background: 'white', borderRadius: '16px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)', padding: '16px' }}>
-          <h2 style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '16px', fontWeight: 500, marginBottom: '8px' }}>
+        <div onMouseEnter={() => setHoverRewards(true)} onMouseLeave={() => setHoverRewards(false)} style={{ background: 'white', borderRadius: '16px', border: '1px solid #e5e7eb', boxShadow: hoverRewards ? '0 8px 24px rgba(0,0,0,0.12)' : '0 2px 10px rgba(0,0,0,0.08)', transition: 'box-shadow 0.2s ease-in-out', padding: chartPadding }}>
+          <h2 style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '18px', fontWeight: 500, color: '#111827', paddingBottom: '10px', marginBottom: '14px', borderBottom: '1px solid #f3f4f6' }}>
             <span>Operator Rewards per Epoch</span>
             {isLive && <span title="Live" style={{ width: 6, height: 6, borderRadius: 9999, background: '#10B981', display: 'inline-block' }} />}
           </h2>
-          <div style={{ height: '256px' }}>
+          <div style={{ height: chartHeight }}>
             <ChartErrorBoundary>
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={chartData} margin={{ top: 10, right: 24, left: 8, bottom: 24 }} syncId="epochs" syncMethod="index">
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="epoch" tick={{ fontSize: 12 }} />
-                <YAxis tickFormatter={(v)=>formatYAxisTick(Number(v), unit)} tick={{ fontSize: 12 }} domain={rewardsYDomain} scale={rewardsScale === 'log' ? 'log' : 'auto'} allowDataOverflow />
+                <CartesianGrid stroke="#e5e7eb" strokeDasharray="3 3" />
+                <XAxis dataKey="epoch" tick={{ fontSize: microFont }} />
+                <YAxis tickFormatter={(v)=>formatYAxisTick(Number(v), unit)} tick={{ fontSize: microFont }} domain={rewardsYDomain} scale={rewardsScale === 'log' ? 'log' : 'auto'} allowDataOverflow />
                 <Tooltip formatter={(v)=>`${formatTooltipNumber(Number(v), unit, 'rewards')} ${unit}`} labelFormatter={(l)=>`Epoch ${l}`} />
-                {showOp0 && <Bar dataKey="rewards0" name="Operator 0" fill={COLORS.op0} />}
-                {showOp1 && <Bar dataKey="rewards1" name="Operator 1" fill={COLORS.op1} />}
+                {showOp0 && <Bar dataKey="rewards0" name="Operator 0" fill={COLORS.op0} radius={[2,2,0,0]} />}
+                {showOp1 && <Bar dataKey="rewards1" name="Operator 1" fill={COLORS.op1} radius={[2,2,0,0]} />}
                 <Line type="monotone" dataKey="rewardsTotal" name="Total Rewards" dot={false} stroke={COLORS.total} strokeWidth={2} connectNulls />
-                <Brush dataKey="epoch" height={14} stroke="#9CA3AF" travellerWidth={8} onChange={handleBrushChange} {...sharedBrushProps} />
+                <Brush dataKey="epoch" height={isMobile ? 12 : 14} stroke="#9CA3AF" travellerWidth={isMobile ? 6 : 8} onChange={handleBrushChange} {...sharedBrushProps} />
               </ComposedChart>
             </ResponsiveContainer>
             </ChartErrorBoundary>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8, flexWrap: 'wrap', gap: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', marginTop: 8, flexWrap: 'wrap', gap: 8 }}>
               <div style={{ display: 'inline-flex', border: '1px solid #e5e7eb', borderRadius: '8px', overflow: 'hidden', flexShrink: 0 }}>
                 {(['auto','fit','log'] as const).map(key => (
                   <button
                     key={key}
                     onClick={() => setRewardsScale(key)}
                     style={{
-                      padding: '4px 8px',
-                      fontSize: '11px',
+                      padding: isMobile ? '3px 6px' : '4px 8px',
+                      fontSize: microFont,
                       textTransform: 'capitalize',
                       background: rewardsScale === key ? '#111827' : 'white',
                       color: rewardsScale === key ? 'white' : '#111827',
@@ -623,41 +686,9 @@ export default function Dashboard(){
                   >{key}</button>
                 ))}
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', justifyContent: 'flex-end', flex: 1, minWidth: 0 }}>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ width: 12, height: 2, background: COLORS.total, display: 'inline-block' }} />
-                  <span style={{ fontSize: 12, color: '#6b7280' }}>Total Rewards</span>
-                </span>
-                {showOp0 && (
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ width: 12, height: 8, background: COLORS.op0, display: 'inline-block' }} />
-                    <span style={{ fontSize: 12, color: '#6b7280' }}>Operator 0</span>
-                  </span>
-                )}
-                {showOp1 && (
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ width: 12, height: 8, background: COLORS.op1, display: 'inline-block' }} />
-                    <span style={{ fontSize: 12, color: '#6b7280' }}>Operator 1</span>
-                  </span>
-                )}
-              </div>
             </div>
           </div>
         </div>
-      </div>
-
-      <div style={{ background: 'white', borderRadius: '16px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)', padding: '16px', marginTop: '24px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <h2 style={{ fontSize: '16px', fontWeight: 500, marginBottom: '8px' }}>Raw JSON</h2>
-          <button onClick={()=>setShowRaw(v=>!v)} style={{ padding: '6px 10px', fontSize: '12px', border: '1px solid #e5e7eb', borderRadius: '8px', background: 'white', cursor: 'pointer' }}>
-            {showRaw ? 'Hide' : 'Show'}
-          </button>
-        </div>
-        {showRaw && (
-          <pre style={{ fontSize: '12px', overflow: 'auto', maxHeight: '18rem' }}>
-{JSON.stringify(rows.slice(-10), null, 2)}
-          </pre>
-        )}
       </div>
     </div>
   );
