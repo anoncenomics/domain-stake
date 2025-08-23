@@ -105,6 +105,7 @@ async function main(){
   }
 
   const rows = [...existing];
+  let lastWrittenLength = rows.length;
 
   for (let ep = startEpoch; ep <= endEpoch; ep++){
     console.log(`[epoch] ${ep}`);
@@ -123,6 +124,12 @@ async function main(){
 
     if (!hasConfirmedEnd){
       // Do not persist incomplete epoch rows
+      if (rows.length > lastWrittenLength){
+        ensureDir(OUT);
+        fs.writeFileSync(OUT, JSON.stringify(rows, null, 2));
+        console.log(`[write] ${OUT} • count=${rows.length}`);
+        lastWrittenLength = rows.length;
+      }
       continue;
     }
 
@@ -141,11 +148,17 @@ async function main(){
       rewards: endSnap?.rewards
     });
 
-    if (ep % 5 === 0 || ep === endEpoch){
-      ensureDir(OUT);
-      fs.writeFileSync(OUT, JSON.stringify(rows, null, 2));
-      console.log(`[write] ${OUT} • count=${rows.length}`);
-    }
+    // Persist after each completed epoch to avoid losing progress
+    ensureDir(OUT);
+    fs.writeFileSync(OUT, JSON.stringify(rows, null, 2));
+    console.log(`[write] ${OUT} • count=${rows.length}`);
+    lastWrittenLength = rows.length;
+  }
+
+  if (rows.length > lastWrittenLength){
+    ensureDir(OUT);
+    fs.writeFileSync(OUT, JSON.stringify(rows, null, 2));
+    console.log(`[write] ${OUT} • count=${rows.length}`);
   }
 
   await api.disconnect();
