@@ -1,7 +1,7 @@
 name: Backfill Epochs
 on:
   schedule:
-    - cron: '0 */6 * * *'
+    - cron: '*/15 * * * *'
   workflow_dispatch: {}
 permissions:
   contents: write
@@ -11,6 +11,7 @@ concurrency:
 jobs:
   backfill:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
