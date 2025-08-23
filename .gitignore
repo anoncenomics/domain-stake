@@ -1,2 +1,30 @@
 .vercel
 node_modules
+\n+# Local environment and config
+.env
+.env.*
+*.local
+
+# Build outputs
+.next
+out
+dist
+coverage
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# OS/Editor
+.DS_Store
+.idea/
+.vscode/
+
+# Developer-only scripts (not required for CI workflow)
+auto-evm-epoch-reader.js
+
+# Data backups / temp (keep epochs.json tracked for workflow)
+public/data/epochs.backup.json
+public/data/*.bak
+public/data/*.tmp

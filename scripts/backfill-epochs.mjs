@@ -110,12 +110,20 @@ async function main(){
     console.log(`[epoch] ${ep}`);
     const startBlock = await findEpochStartBlock(api, ep);
     let endBlock;
+    let hasConfirmedEnd = true;
     try {
       const nextStart = await findEpochStartBlock(api, ep + 1);
       endBlock = nextStart - 1;
     } catch {
-      const h = await api.rpc.chain.getHeader();
-      endBlock = h.number.toNumber();
+      // If the next epoch start is not yet discoverable, this epoch is still in progress.
+      // Skip writing a provisional row to avoid incomplete rewards being persisted.
+      hasConfirmedEnd = false;
+      console.log(`[skip] epoch ${ep} has no confirmed end block yet; will retry on next run`);
+    }
+
+    if (!hasConfirmedEnd){
+      // Do not persist incomplete epoch rows
+      continue;
     }
 
     const startSnap = await readSummaryAt(api, startBlock);
