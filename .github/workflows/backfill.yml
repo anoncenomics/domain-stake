@@ -1,0 +1,31 @@
+name: Backfill Epochs
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch: {}
+permissions:
+  contents: write
+concurrency:
+  group: backfill-epochs
+  cancel-in-progress: false
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm ci || npm i
+      - name: Compute starting epoch
+        run: |
+          FROM=$(node -e "const fs=require('fs'); let from=0; try{ const arr=JSON.parse(fs.readFileSync('public/data/epochs.json','utf8')); from=(Array.isArray(arr)&&arr.length)?(Number(arr[arr.length-1]?.epoch||0)+1):0; } catch(e){ from=0 } ; console.log(from)")
+          echo "FROM=$FROM" >> $GITHUB_ENV
+      - run: node scripts/backfill-epochs.mjs --ws wss://rpc.mainnet.subspace.foundation/ws --domain 0 --from $FROM --to current --append
+      - run: git config user.email "bot@users.noreply.github.com" && git config user.name "Backfill Bot"
+      - run: |
+          git add public/data/epochs.json
+          git commit -m "chore: update epochs.json" || echo "no changes"
+          git push
+
+

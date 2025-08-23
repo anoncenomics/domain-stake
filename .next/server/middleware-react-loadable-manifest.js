@@ -1,0 +1,1 @@
+self.__REACT_LOADABLE_MANIFEST="{\"app/page.tsx -> @autonomys/auto-utils\":{\"id\":\"app/page.tsx -> @autonomys/auto-utils\",\"files\":[\"static/chunks/_app-pages-browser_node_modules_autonomys_auto-utils_dist_index_js.js\"]}}"
