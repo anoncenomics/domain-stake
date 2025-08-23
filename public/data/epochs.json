@@ -34016,5 +34016,73 @@
     "rewards": {
       "1": "1020891329991700"
     }
+  },
+  {
+    "domainId": 0,
+    "epoch": 2216,
+    "startBlock": 4117816,
+    "startHash": "0x8a8adba63b89d6eca6cc3de6cc5ac734e6c75b56e0240c1c5f41f332b65ab60b",
+    "endBlock": 4117936,
+    "endHash": "0x47937c10c0addeba88ac66c17235e4c2c286841ac1a590e1aa5968ba41324e0e",
+    "totalStake": "2826718299815561189869990",
+    "operatorStakes": {
+      "0": "1610702471167478543557393",
+      "1": "1216015828648082646312597"
+    },
+    "rewards": {
+      "0": "692656471434689",
+      "1": "1348913352257210"
+    }
+  },
+  {
+    "domainId": 0,
+    "epoch": 2217,
+    "startBlock": 4117937,
+    "startHash": "0xbe81014e4e2dfa5ef7e43850b05e3fcbf88ee37f6bc2fbb021c70e21521362a5",
+    "endBlock": 4118060,
+    "endHash": "0xc3c3e3eef1db7aef45e6dcf93a03ae6e34999941d37844ac052d689029258014",
+    "totalStake": "2826718301836715315324971",
+    "operatorStakes": {
+      "0": "1610702471853208450277736",
+      "1": "1216015829983506865047235"
+    },
+    "rewards": {
+      "0": "408271397644120",
+      "1": "612407096466180"
+    }
+  },
+  {
+    "domainId": 0,
+    "epoch": 2218,
+    "startBlock": 4118061,
+    "startHash": "0x14f5d2dc3b66152550e14c2fbc0ac2f328100a7fecc5a9f45d6560a2ac8a772b",
+    "endBlock": 4118179,
+    "endHash": "0xc585cc4d10750391f6faaead67d709e2ca206d050b2dee6a9e78a2bc9047f758",
+    "totalStake": "2826718302847187024494169",
+    "operatorStakes": {
+      "0": "1610702472257397133945415",
+      "1": "1216015830589789890548754"
+    },
+    "rewards": {
+      "0": "463944773176954",
+      "1": "556733727812345"
+    }
+  },
+  {
+    "domainId": 0,
+    "epoch": 2219,
+    "startBlock": 4118180,
+    "startHash": "0xb998c995a25fe907927e822e181defc4d1d089c7f7e45f67839eebcfef4b98cf",
+    "endBlock": 4118297,
+    "endHash": "0xdc4d011c608628c458486a7a85c8f0f7912a22f187d3d03a8b758bf734293d13",
+    "totalStake": "2826798303857658740473576",
+    "operatorStakes": {
+      "0": "1610782472716702459390600",
+      "1": "1216015831140956281082976"
+    },
+    "rewards": {
+      "0": "682313496050388",
+      "1": "346740220517162"
+    }
   }
 ]
