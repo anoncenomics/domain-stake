@@ -38,6 +38,8 @@ jobs:
           echo "FROM=$FROM" >> $GITHUB_ENV
           echo "TO=$TO" >> $GITHUB_ENV
       - run: node scripts/backfill-epochs.mjs --ws wss://rpc.mainnet.subspace.foundation/ws --domain 0 --from $FROM --to $TO --append
+      - name: Augment operator share prices
+        run: node scripts/augment-share-prices.mjs --ws wss://rpc.mainnet.subspace.foundation/ws --in public/data/epochs.json --out public/data/epochs.json
       - run: git config user.email "bot@users.noreply.github.com" && git config user.name "Backfill Bot"
       - run: |
           git add public/data/epochs.json
