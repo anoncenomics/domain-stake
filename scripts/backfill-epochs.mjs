@@ -136,6 +136,39 @@ async function main(){
     const startSnap = await readSummaryAt(api, startBlock);
     const endSnap   = await readSummaryAt(api, endBlock);
 
+    // Derive operator share prices at epoch end
+    const operatorSharePrices = {};
+    try {
+      const atEnd = await api.at(await api.rpc.chain.getBlockHash(endBlock));
+      const entries = await atEnd.query.domains.operators.entries();
+      const operatorIds = entries.map(([k]) => k.args[0].toNumber());
+      for (const opId of operatorIds){
+        try {
+          const opt = await atEnd.query.domains.operatorEpochSharePrice(DOMAIN_ID, [opId, ep]);
+          if (opt && opt.isSome !== undefined){
+            if (opt.isSome){ operatorSharePrices[String(opId)] = opt.unwrap().toString(); continue; }
+          } else if (opt) {
+            operatorSharePrices[String(opId)] = opt.toString();
+            continue;
+          }
+          const oper = await atEnd.query.domains.operators(opId);
+          if (oper && oper.isSome){
+            const v = oper.unwrap();
+            const stake = v.currentTotalStake?.toString?.();
+            const shares = v.currentTotalShares?.toString?.();
+            if (stake && shares && shares !== '0'){
+              const p = (BigInt(stake) * 10n**18n) / BigInt(shares);
+              operatorSharePrices[String(opId)] = p.toString();
+            }
+          }
+        } catch (e) {
+          console.warn(`[sharePrice op=${opId} ep=${ep}]`, e?.message || e);
+        }
+      }
+    } catch (e) {
+      console.warn(`[sharePrice epoch=${ep}]`, e?.message || e);
+    }
+
     rows.push({
       domainId: DOMAIN_ID,
       epoch: ep,
@@ -145,7 +178,8 @@ async function main(){
       endHash: endSnap?.hash,
       totalStake: startSnap?.totalStake,
       operatorStakes: startSnap?.operatorStakes,
-      rewards: endSnap?.rewards
+      rewards: endSnap?.rewards,
+      ...(Object.keys(operatorSharePrices).length ? { operatorSharePrices } : {})
     });
 
     // Persist after each completed epoch to avoid losing progress

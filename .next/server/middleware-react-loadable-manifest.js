@@ -1,1 +1,1 @@
-self.__REACT_LOADABLE_MANIFEST="{\"app/page.tsx -> @autonomys/auto-utils\":{\"id\":\"app/page.tsx -> @autonomys/auto-utils\",\"files\":[\"static/chunks/_app-pages-browser_node_modules_autonomys_auto-utils_dist_index_js.js\"]}}"
+self.__REACT_LOADABLE_MANIFEST='{"app/page.tsx -> @autonomys/auto-utils":{"id":69915,"files":["static/chunks/ec1cffe5.ef2a143b3923ed3b.js","static/chunks/915.3ca79ba3c06df89c.js","static/chunks/601.9c1b1031baef70d2.js"]}}';

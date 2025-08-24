@@ -965,7 +965,10 @@ export default function Dashboard(){
     if (!range) return;
     const { startIndex, endIndex } = range as any;
     if (typeof startIndex === 'number' && typeof endIndex === 'number'){
-      setBrush({ startIndex, endIndex });
+      // Avoid redundant state updates that can cause render thrashing
+      if (!brush || brush.startIndex !== startIndex || brush.endIndex !== endIndex){
+        setBrush({ startIndex, endIndex });
+      }
     }
   }
 
@@ -1038,7 +1041,7 @@ export default function Dashboard(){
             <ChartErrorBoundary>
               <ResponsiveContainer width="100%" height="100%">
                 {type === 'stake' ? (
-                  <LineChart data={chartData} margin={{ top: 20, right: 40, left: 20, bottom: 40 }} syncId="epochs" syncMethod="index">
+                  <LineChart data={chartData} margin={{ top: 20, right: 40, left: 20, bottom: 40 }}>
                     <CartesianGrid stroke="#e5e7eb" strokeDasharray="3 3" />
                     <XAxis dataKey="epoch" tick={{ fontSize: 12 }} />
                     <YAxis tickFormatter={(v)=>formatYAxisTick(Number(v), unit)} tick={{ fontSize: 12 }} domain={stakeYDomain} scale={stakeScale === 'log' ? 'log' : 'auto'} allowDataOverflow />
@@ -1048,7 +1051,7 @@ export default function Dashboard(){
                     {showOp1 && <Line type="monotone" dataKey="stake1" dot={false} name="Operator 1 Stake" stroke={COLORS.op1} strokeDasharray="6 3" strokeWidth={2} />}
                   </LineChart>
                 ) : type === 'rewards' ? (
-                  <ComposedChart data={chartData} margin={{ top: 20, right: 40, left: 20, bottom: 40 }} syncId="epochs" syncMethod="index">
+                  <ComposedChart data={chartData} margin={{ top: 20, right: 40, left: 20, bottom: 40 }}>
                     <CartesianGrid stroke="#e5e7eb" strokeDasharray="3 3" />
                     <XAxis dataKey="epoch" tick={{ fontSize: 12 }} />
                     <YAxis tickFormatter={(v)=>formatYAxisTick(Number(v), unit)} tick={{ fontSize: 12 }} domain={rewardsYDomain} scale={rewardsScale === 'log' ? 'log' : 'auto'} allowDataOverflow />
@@ -1058,7 +1061,7 @@ export default function Dashboard(){
                     <Line type="monotone" dataKey="rewardsTotal" name="Total Rewards" dot={false} stroke={COLORS.total} strokeWidth={3} connectNulls />
                   </ComposedChart>
                 ) : (
-                  <LineChart data={chartData} margin={{ top: 20, right: 40, left: 20, bottom: 40 }} syncId="epochs" syncMethod="index">
+                  <LineChart data={chartData} margin={{ top: 20, right: 40, left: 20, bottom: 40 }}>
                     <CartesianGrid stroke="#e5e7eb" strokeDasharray="3 3" />
                     <XAxis dataKey="epoch" tick={{ fontSize: 12 }} />
                     <YAxis tickFormatter={(v)=> {
