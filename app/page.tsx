@@ -821,6 +821,17 @@ export default function Dashboard(){
   const [brush, setBrush] = useState<{ startIndex: number; endIndex: number } | null>(null);
   const [isMobile, setIsMobile] = useState(false);
   const [fullscreenChart, setFullscreenChart] = useState<'stake' | 'rewards' | 'share' | null>(null);
+  const [frozenChartData, setFrozenChartData] = useState<any[] | null>(null);
+
+  function openFullscreen(type: 'stake' | 'rewards' | 'share'){
+    if (!frozenChartData) setFrozenChartData(chartData);
+    setFullscreenChart(type);
+  }
+
+  function closeFullscreen(){
+    setFullscreenChart(null);
+    setFrozenChartData(null);
+  }
 
   useEffect(() => {
     const update = () => setIsMobile(typeof window !== 'undefined' && window.innerWidth < 640);
@@ -975,6 +986,29 @@ export default function Dashboard(){
   // Fullscreen overlay component
   function FullscreenChart({ type, onClose }: { type: 'stake' | 'rewards' | 'share'; onClose: () => void }) {
     const fullscreenHeight = '90vh';
+    const dataForChart = frozenChartData ?? chartData;
+
+    const stakeYDomainFS = useMemo(() => computeYDomain(
+      dataForChart,
+      ['totalStake', ...(showOp0 ? ['stake0'] : []), ...(showOp1 ? ['stake1'] : [])],
+      stakeScale
+    ), [dataForChart, showOp0, showOp1, stakeScale]);
+
+    const rewardsYDomainFS = useMemo(() => computeYDomain(
+      dataForChart,
+      ['rewardsTotal', ...(showOp0 ? ['rewards0'] : []), ...(showOp1 ? ['rewards1'] : [])],
+      rewardsScale
+    ), [dataForChart, showOp0, showOp1, rewardsScale]);
+
+    const shareYDomainFS = useMemo(() => {
+      const keys = shareView === 'delta'
+        ? [ ...(showOp0 ? ['share0Bps'] : []), ...(showOp1 ? ['share1Bps'] : []) ]
+        : shareView === 'index'
+          ? [ ...(showOp0 ? ['share0Index'] : []), ...(showOp1 ? ['share1Index'] : []) ]
+          : [ ...(showOp0 ? ['share0'] : []), ...(showOp1 ? ['share1'] : []) ];
+      const mode = shareView === 'delta' && shareScale === 'log' ? 'fit' : shareScale;
+      return computeYDomain(dataForChart, keys, mode);
+    }, [dataForChart, showOp0, showOp1, shareScale, shareView]);
     
     return (
       <div style={{
@@ -1041,34 +1075,34 @@ export default function Dashboard(){
             <ChartErrorBoundary>
               <ResponsiveContainer width="100%" height="100%">
                 {type === 'stake' ? (
-                  <LineChart data={chartData} margin={{ top: 20, right: 40, left: 20, bottom: 40 }}>
+                  <LineChart data={dataForChart} margin={{ top: 20, right: 40, left: 20, bottom: 40 }}>
                     <CartesianGrid stroke="#e5e7eb" strokeDasharray="3 3" />
                     <XAxis dataKey="epoch" tick={{ fontSize: 12 }} />
-                    <YAxis tickFormatter={(v)=>formatYAxisTick(Number(v), unit)} tick={{ fontSize: 12 }} domain={stakeYDomain} scale={stakeScale === 'log' ? 'log' : 'auto'} allowDataOverflow />
+                    <YAxis tickFormatter={(v)=>formatYAxisTick(Number(v), unit)} tick={{ fontSize: 12 }} domain={stakeYDomainFS} scale={stakeScale === 'log' ? 'log' : 'auto'} allowDataOverflow />
                     <Tooltip formatter={(v)=>`${formatTooltipNumber(Number(v), unit, 'stake')} ${unit}`} labelFormatter={(l)=>`Epoch ${l}`} />
                     <Line type="monotone" dataKey="totalStake" dot={false} name="Total Stake" strokeWidth={3} stroke={COLORS.total} />
                     {showOp0 && <Line type="monotone" dataKey="stake0" dot={false} name="Operator 0 Stake" stroke={COLORS.op0} strokeDasharray="6 3" strokeWidth={2} />}
                     {showOp1 && <Line type="monotone" dataKey="stake1" dot={false} name="Operator 1 Stake" stroke={COLORS.op1} strokeDasharray="6 3" strokeWidth={2} />}
                   </LineChart>
                 ) : type === 'rewards' ? (
-                  <ComposedChart data={chartData} margin={{ top: 20, right: 40, left: 20, bottom: 40 }}>
+                  <ComposedChart data={dataForChart} margin={{ top: 20, right: 40, left: 20, bottom: 40 }}>
                     <CartesianGrid stroke="#e5e7eb" strokeDasharray="3 3" />
                     <XAxis dataKey="epoch" tick={{ fontSize: 12 }} />
-                    <YAxis tickFormatter={(v)=>formatYAxisTick(Number(v), unit)} tick={{ fontSize: 12 }} domain={rewardsYDomain} scale={rewardsScale === 'log' ? 'log' : 'auto'} allowDataOverflow />
+                    <YAxis tickFormatter={(v)=>formatYAxisTick(Number(v), unit)} tick={{ fontSize: 12 }} domain={rewardsYDomainFS} scale={rewardsScale === 'log' ? 'log' : 'auto'} allowDataOverflow />
                     <Tooltip formatter={(v)=>`${formatTooltipNumber(Number(v), unit, 'rewards')} ${unit}`} labelFormatter={(l)=>`Epoch ${l}`} />
                     {showOp0 && <Bar dataKey="rewards0" name="Operator 0" fill={COLORS.op0} radius={[3,3,0,0]} />}
                     {showOp1 && <Bar dataKey="rewards1" name="Operator 1" fill={COLORS.op1} radius={[3,3,0,0]} />}
                     <Line type="monotone" dataKey="rewardsTotal" name="Total Rewards" dot={false} stroke={COLORS.total} strokeWidth={3} connectNulls />
                   </ComposedChart>
                 ) : (
-                  <LineChart data={chartData} margin={{ top: 20, right: 40, left: 20, bottom: 40 }}>
+                  <LineChart data={dataForChart} margin={{ top: 20, right: 40, left: 20, bottom: 40 }}>
                     <CartesianGrid stroke="#e5e7eb" strokeDasharray="3 3" />
                     <XAxis dataKey="epoch" tick={{ fontSize: 12 }} />
                     <YAxis tickFormatter={(v)=> {
                       if (shareView === 'delta') return `${Number(v).toFixed(1)} bps`;
                       if (shareView === 'index') return Number(v).toExponential(2);
                       return Number(v).toExponential(2);
-                    }} tick={{ fontSize: 12 }} domain={shareYDomain} scale={shareScale === 'log' ? 'log' : 'auto'} allowDataOverflow />
+                    }} tick={{ fontSize: 12 }} domain={shareYDomainFS} scale={shareScale === 'log' ? 'log' : 'auto'} allowDataOverflow />
                     <Tooltip formatter={(v)=> {
                       if (shareView === 'delta') return `${Number(v).toFixed(2)} bps`;
                       if (shareView === 'index') return `${Number(v).toExponential(6)}×`;
@@ -1237,7 +1271,7 @@ export default function Dashboard(){
               {isLive && <span title="Live" style={{ width: 6, height: 6, borderRadius: '50%', background: '#10B981', display: 'inline-block' }} />}
             </div>
             <button
-              onClick={() => setFullscreenChart(fullscreenChart === 'stake' ? null : 'stake')}
+              onClick={() => (fullscreenChart === 'stake' ? closeFullscreen() : openFullscreen('stake'))}
               style={{
                 padding: isMobile ? '8px 12px' : '10px 16px',
                 fontSize: isMobile ? '14px' : '16px',
@@ -1328,7 +1362,7 @@ export default function Dashboard(){
               {isLive && <span title="Live" style={{ width: 6, height: 6, borderRadius: '50%', background: '#10B981', display: 'inline-block' }} />}
             </div>
             <button
-              onClick={() => setFullscreenChart(fullscreenChart === 'rewards' ? null : 'rewards')}
+              onClick={() => (fullscreenChart === 'rewards' ? closeFullscreen() : openFullscreen('rewards'))}
               style={{
                 padding: isMobile ? '8px 12px' : '10px 16px',
                 fontSize: isMobile ? '14px' : '16px',
@@ -1418,7 +1452,7 @@ export default function Dashboard(){
               <span>Operator Share Price (Perquintill)</span>
             </div>
             <button
-              onClick={() => setFullscreenChart(fullscreenChart === 'share' ? null : 'share')}
+              onClick={() => (fullscreenChart === 'share' ? closeFullscreen() : openFullscreen('share'))}
               style={{
                 padding: isMobile ? '8px 12px' : '10px 16px',
                 fontSize: isMobile ? '14px' : '16px',
@@ -1514,7 +1548,7 @@ export default function Dashboard(){
       {fullscreenChart && (
         <FullscreenChart 
           type={fullscreenChart} 
-          onClose={() => setFullscreenChart(null)} 
+          onClose={closeFullscreen} 
         />
       )}
     </div>
