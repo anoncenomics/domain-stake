@@ -9,7 +9,11 @@
     "build": "next build",
     "start": "next start",
     "epoch": "node auto-evm-epoch-reader.js",
-    "backfill": "node scripts/backfill-epochs.mjs --ws wss://rpc.mainnet.subspace.foundation/ws --domain 0 --from 0 --to current --append"
+    "backfill": "node scripts/backfill-epochs.mjs --ws wss://rpc.mainnet.subspace.foundation/ws --domain 0 --from 0 --to current --append",
+    "events:list": "node scripts/list-domain-events.mjs",
+    "live:transfers": "node scripts/live-operator-transfers.mjs",
+    "scan:transfers": "node scripts/scan-operator-transfers.mjs",
+    "augment:shareprices": "node scripts/augment-share-prices.mjs"
   },
   "dependencies": {
     "@autonomys/auto-utils": "^1.5.14",

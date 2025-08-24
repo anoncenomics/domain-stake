@@ -76,6 +76,50 @@ function tokensNumberFromShannons(x?: string, fractionDigits = 6){
   return plain ? parseFloat(plain) : 0;
 }
 
+function perquintillToNumber(x?: string){
+  // Perquintill uses 1e18 scale, reuse token formatter with 18 fraction digits
+  const plain = tokensPlainFromShannons(x, 18);
+  return plain ? parseFloat(plain) : 0;
+}
+
+function deltaBps(curr?: string, prev?: string){
+  try {
+    if (!curr || !prev) return 0;
+    const c = BigInt(curr);
+    const p = BigInt(prev);
+    if (p === BigInt(0)) return 0;
+    const diff = c - p; // same scale, cancels in division
+    const bps = (diff * BigInt(10000)) / p;
+    return Number(bps);
+  } catch {
+    return 0;
+  }
+}
+
+function formatPerquintillDecimalString(x?: string){
+  // Return a long decimal string with up to 18 fractional digits; trim trailing zeros
+  const s = tokensPlainFromShannons(x, 18);
+  if (!s) return '';
+  if (!s.includes('.')) return s;
+  return s.replace(/0+$/, '').replace(/\.$/, '');
+}
+
+function ratioToFixed(numer?: string, denom?: string, fractionDigits = 6){
+  try {
+    if (!numer || !denom) return '';
+    const n = BigInt(numer);
+    const d = BigInt(denom);
+    if (d === BigInt(0)) return '';
+    const scale = pow10BigInt(fractionDigits);
+    const q = (n * scale) / d; // floor
+    const intPart = q / scale;
+    const fracPart = q % scale;
+    return `${intPart.toString()}.${fracPart.toString().padStart(fractionDigits, '0')}`;
+  } catch {
+    return '';
+  }
+}
+
 function formatAmount(x: string | undefined, unit: 'AI3' | 'Shannons'){
   return unit === 'AI3' ? formatTokensFromShannons(x, 3) : formatBig(x);
 }
@@ -168,15 +212,428 @@ class ChartErrorBoundary extends React.Component<{ children: React.ReactNode }, 
   }
 }
 
-function StatCard({ label, value, live = false }: { label: string; value: string | number; live?: boolean }){
-  const [hover, setHover] = useState(false);
+function DashboardHeader({ isLive, liveStatus, lastLiveAt, setIsLive, setLiveStatus, onDownloadCSV, isMobile }: { 
+  isLive: boolean; 
+  liveStatus: 'idle' | 'connecting' | 'live' | 'error'; 
+  lastLiveAt: number | null; 
+  setIsLive: (v: boolean) => void; 
+  setLiveStatus: (v: 'idle' | 'connecting' | 'live' | 'error') => void; 
+  onDownloadCSV: () => void; 
+  isMobile: boolean 
+}){
+  const fontFamily = '-apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", sans-serif';
   return (
-    <div onMouseEnter={()=>setHover(true)} onMouseLeave={()=>setHover(false)} style={{ background: 'white', borderRadius: '16px', border: '1px solid #e5e7eb', boxShadow: hover ? '0 8px 24px rgba(0,0,0,0.12)' : '0 2px 10px rgba(0,0,0,0.08)', padding: '18px', transition: 'box-shadow 0.2s ease, transform 0.2s ease', transform: hover ? 'translateY(-1px)' : 'none' }}>
-      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: '#6b7280', marginBottom: '6px' }}>
-        {label}
-        {live && <span title="Live" style={{ width: 6, height: 6, borderRadius: 9999, background: '#10B981', display: 'inline-block' }} />}
+    <div style={{ 
+      display: 'flex', 
+      alignItems: 'center', 
+      justifyContent: 'space-between', 
+      marginBottom: isMobile ? '16px' : '20px',
+      fontFamily 
+    }}>
+      <div>
+        <h1 style={{ 
+          fontSize: isMobile ? '18px' : '24px', 
+          fontWeight: 600, 
+          color: '#111827', 
+          margin: 0, 
+          lineHeight: 1.2,
+          fontFamily 
+        }}>
+          Auto EVM (domain 0)
+        </h1>
+        <p style={{ 
+          fontSize: isMobile ? '13px' : '14px', 
+          color: '#64748b', 
+          margin: '2px 0 0 0',
+          fontFamily 
+        }}>
+          Epoch Staking & Rewards
+        </p>
       </div>
-      <div style={{ fontSize: '20px', fontWeight: 700 }}>{String(value)}</div>
+      
+      <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '8px' : '12px' }}>
+        {/* Live Status & Toggle */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span
+            title={liveStatus}
+            style={{
+              width: 8,
+              height: 8,
+              borderRadius: '50%',
+              background:
+                liveStatus === 'live' ? '#10B981' :
+                liveStatus === 'connecting' ? '#F59E0B' :
+                liveStatus === 'error' ? '#EF4444' : '#9CA3AF'
+            }}
+          />
+          <button
+            onClick={() => {
+              const next = !isLive;
+              setIsLive(next);
+              if (!next) setLiveStatus('idle');
+            }}
+            style={{ 
+              padding: isMobile ? '6px 12px' : '8px 16px',
+              fontSize: isMobile ? '12px' : '13px',
+              border: '1px solid #d1d5db', 
+              borderRadius: '6px', 
+              background: isLive ? '#10B981' : 'white',
+              color: isLive ? 'white' : '#374151',
+              cursor: 'pointer', 
+              transition: 'all 0.15s ease-in-out',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+              fontWeight: 500,
+              fontFamily
+            }}
+            onMouseEnter={(e) => {
+              if (!isLive) {
+                e.currentTarget.style.background = '#f3f4f6';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!isLive) {
+                e.currentTarget.style.background = 'white';
+              }
+            }}
+          >
+            Live {isLive ? 'On' : 'Off'}
+          </button>
+          {isLive && lastLiveAt && (
+            <span style={{ fontSize: '11px', color: '#6b7280', fontFamily }}>
+              {Math.max(0, Math.floor(((Date.now() - lastLiveAt) / 1000)))}s ago
+            </span>
+          )}
+        </div>
+        
+        {/* Download CSV */}
+        <button 
+          onClick={onDownloadCSV}
+          style={{ 
+            padding: isMobile ? '6px 12px' : '8px 16px',
+            fontSize: isMobile ? '12px' : '13px',
+            border: '1px solid #d1d5db', 
+            borderRadius: '6px', 
+            background: 'white', 
+            color: '#374151',
+            cursor: 'pointer', 
+            transition: 'all 0.15s ease-in-out',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+            fontWeight: 500,
+            fontFamily
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = '#f3f4f6';
+            e.currentTarget.style.transform = 'translateY(-1px)';
+            e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'white';
+            e.currentTarget.style.transform = 'translateY(0)';
+            e.currentTarget.style.boxShadow = '0 1px 2px rgba(0,0,0,0.05)';
+          }}
+        >
+          Download CSV
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function DomainSummary({ summary, isMobile }: { summary: any; isMobile: boolean }){
+  const fontFamily = '-apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", sans-serif';
+  return (
+    <div style={{ 
+      background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)', 
+      borderRadius: '12px 12px 0 0', 
+      border: '2px solid #d1d5db', 
+      borderBottom: '1px solid #e2e8f0', 
+      padding: isMobile ? '20px' : '24px', 
+      fontFamily,
+      boxShadow: '0 8px 16px rgba(0, 0, 0, 0.12), 0 4px 6px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.3)',
+      position: 'relative'
+    }}>
+      {/* Subtle texture overlay */}
+      <div style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        background: 'radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.03), transparent 50%), radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.05), transparent 50%)',
+        borderRadius: '12px 12px 0 0',
+        pointerEvents: 'none'
+      }} />
+      
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, minmax(0, 1fr))', gap: isMobile ? 16 : 20, alignItems: 'stretch', position: 'relative', zIndex: 1 }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: isMobile ? 12 : 13, color: '#64748b', fontWeight: 500, marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em', fontFamily }}>Epoch</div>
+          <div style={{ fontSize: isMobile ? 28 : 32, fontWeight: 700, color: '#111827', lineHeight: 1.1, fontFamily, textShadow: '0 1px 2px rgba(0,0,0,0.1)' }}>{summary.lastEpoch}</div>
+          <div style={{ fontSize: isMobile ? 11 : 12, color: '#64748b', marginTop: 4, fontFamily }}>Last updated</div>
+        </div>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: isMobile ? 12 : 13, color: '#64748b', fontWeight: 500, marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em', fontFamily }}>Total Stake</div>
+          <div style={{ fontSize: isMobile ? 28 : 32, fontWeight: 700, color: '#111827', lineHeight: 1.1, fontFamily, textShadow: '0 1px 2px rgba(0,0,0,0.1)' }}>{summary.totalStake}</div>
+          <div style={{ fontSize: isMobile ? 11 : 12, color: '#64748b', marginTop: 4, fontFamily }}>AI3</div>
+        </div>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: isMobile ? 12 : 13, color: '#64748b', fontWeight: 500, marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em', fontFamily }}>Latest Rewards</div>
+          <div style={{ fontSize: isMobile ? 28 : 32, fontWeight: 700, color: '#111827', lineHeight: 1.1, fontFamily, textShadow: '0 1px 2px rgba(0,0,0,0.1)' }}>{summary.rewardsTotal}</div>
+          <div style={{ fontSize: isMobile ? 11 : 12, color: '#64748b', marginTop: 4, fontFamily }}>AI3</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MiniSparkline({ data, color }: { data: number[]; color: string }){
+  const w = 120;
+  const h = 28;
+  const min = Math.min(...data);
+  const max = Math.max(...data);
+  const pad = max === min ? 1 : (max - min) * 0.05;
+  const lo = min - pad;
+  const hi = max + pad;
+  const points = data.map((v, i) => {
+    const x = (i / Math.max(1, data.length - 1)) * w;
+    const y = h - ((v - lo) / Math.max(1e-9, (hi - lo))) * h;
+    return `${x.toFixed(2)},${y.toFixed(2)}`;
+  }).join(' ');
+  return (
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`}>
+      <polyline fill="none" stroke={color} strokeWidth="2" points={points} />
+    </svg>
+  );
+}
+
+function OperatorTable({ rows, latest, isMobile, showOp0, showOp1, setShowOp0, setShowOp1 }: { rows: any[]; latest: any; isMobile: boolean; showOp0: boolean; showOp1: boolean; setShowOp0: (v: boolean)=>void; setShowOp1: (v: boolean)=>void }){
+  const opIds = (latest.latestSharePrices || []).map((r: any) => r.id);
+  // Compute common prefix across all visible decimals
+  const decimals: string[] = (latest.latestSharePrices || []).map((x: any) => String(x.decimal || ''));
+  let commonPrefix = '';
+  if (decimals.length >= 2){
+    const L = Math.min(...decimals.map(s => s.length));
+    let i = 0;
+    for (; i < L; i++){
+      const ch = decimals[0][i];
+      if (!decimals.every(s => s[i] === ch)) break;
+    }
+    commonPrefix = decimals[0].slice(0, i);
+  } else if (decimals.length === 1){
+    commonPrefix = decimals[0];
+  }
+
+  const fontFamily = '-apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", sans-serif';
+  const monoFamily = '"JetBrains Mono", "SF Mono", Monaco, Consolas, "Liberation Mono", "Courier New", monospace';
+  
+  return (
+    <div style={{ 
+      background: 'linear-gradient(145deg, #ffffff 0%, #f8fafc 100%)', 
+      borderRadius: '0 0 12px 12px', 
+      border: '2px solid #d1d5db', 
+      borderTop: 'none', 
+      overflow: 'hidden',
+      boxShadow: '0 8px 16px rgba(0, 0, 0, 0.12), 0 4px 6px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.3)',
+      padding: isMobile ? '16px' : '20px'
+    }}>
+      {/* Subtle divider */}
+      <div style={{ 
+        height: '1px', 
+        background: 'linear-gradient(90deg, transparent 0%, #e2e8f0 50%, transparent 100%)', 
+        marginBottom: isMobile ? '16px' : '20px' 
+      }} />
+      
+      {/* Operator Cards */}
+      <div>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(300px, 1fr))', gap: isMobile ? 12 : 16 }}>
+          {(opIds as any[]).map((id: any) => {
+            const color = Number(id) % 2 === 0 ? '#60A5FA' : '#F59E0B';
+            const colorBg = Number(id) % 2 === 0 ? '#EFF6FF' : '#FEF3C7';
+            const stakes = rows[rows.length - 1]?.operatorStakes || {};
+            const rewards = rows[rows.length - 1]?.rewards || {};
+            const stakeStr = formatTokensIntegerFromShannons(stakes[id] || '0');
+            const rewardStr = formatRewardsAmount(rewards[id] || '0', 'AI3');
+            const valueStr = String((latest.latestSharePrices || []).find((x: any)=>x.id===id)?.decimal || '');
+            const prefix = valueStr.startsWith(commonPrefix) ? commonPrefix : '';
+            const suffix = valueStr.slice(prefix.length);
+            const isChecked = String(id) === '0' ? showOp0 : showOp1;
+            
+            return (
+              <div key={id} style={{ 
+                border: '2px solid #d1d5db',
+                borderRadius: '10px',
+                padding: isMobile ? '16px' : '20px',
+                background: 'linear-gradient(145deg, #ffffff 0%, #fafbfc 100%)',
+                borderLeft: `6px solid ${color}`,
+                transition: 'all 0.2s ease',
+                position: 'relative',
+                boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
+              }}>
+                {/* Operator Header */}
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'space-between',
+                  marginBottom: 12
+                }}>
+                  <div style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: 8
+                  }}>
+                    <div style={{ 
+                      width: 12, 
+                      height: 12, 
+                      borderRadius: '50%', 
+                      background: color 
+                    }} />
+                    <h4 style={{ 
+                      fontSize: isMobile ? 16 : 18, 
+                      fontWeight: 700, 
+                      color: '#111827', 
+                      margin: 0,
+                      fontFamily 
+                    }}>
+                      Operator {id}
+                    </h4>
+                  </div>
+                  
+                  {/* Show/Hide Toggle */}
+                  <label style={{ 
+                    display: 'inline-flex', 
+                    alignItems: 'center', 
+                    gap: 4, 
+                    fontSize: isMobile ? 11 : 12, 
+                    padding: '4px 8px', 
+                    borderRadius: '6px', 
+                    background: isChecked ? colorBg : '#f8fafc', 
+                    color: isChecked ? color : '#64748b',
+                    border: `1px solid ${isChecked ? color : '#e2e8f0'}`, 
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    fontWeight: 500,
+                    fontFamily
+                  }}>
+                    <input 
+                      type="checkbox" 
+                      checked={isChecked} 
+                      onChange={(e)=> (String(id)==='0' ? setShowOp0(e.target.checked) : setShowOp1(e.target.checked))} 
+                      style={{ display: 'none' }} 
+                    />
+                    <span style={{ fontSize: '10px' }}>{isChecked ? '✓' : '+'}</span>
+                    <span>Show in Charts</span>
+                  </label>
+                </div>
+
+                {/* Stats Grid */}
+                <div style={{ 
+                  display: 'grid', 
+                  gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', 
+                  gap: isMobile ? 12 : 16
+                }}>
+                  {/* Total Stake */}
+                  <div>
+                    <div style={{ 
+                      fontSize: isMobile ? 11 : 12, 
+                      color: '#64748b', 
+                      fontWeight: 500, 
+                      marginBottom: 4,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em',
+                      fontFamily 
+                    }}>
+                      Total Stake
+                    </div>
+                    <div style={{ 
+                      fontSize: isMobile ? 18 : 20, 
+                      fontWeight: 700, 
+                      color: color, 
+                      lineHeight: 1.2,
+                      fontFamily 
+                    }}>
+                      {stakeStr}
+                    </div>
+                    <div style={{ 
+                      fontSize: isMobile ? 10 : 11, 
+                      color: '#94a3b8', 
+                      fontFamily 
+                    }}>
+                      AI3
+                    </div>
+                  </div>
+
+                  {/* Epoch Rewards */}
+                  <div>
+                    <div style={{ 
+                      fontSize: isMobile ? 11 : 12, 
+                      color: '#64748b', 
+                      fontWeight: 500, 
+                      marginBottom: 4,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em',
+                      fontFamily 
+                    }}>
+                      Latest Rewards
+                    </div>
+                    <div style={{ 
+                      fontSize: isMobile ? 18 : 20, 
+                      fontWeight: 700, 
+                      color: '#111827', 
+                      lineHeight: 1.2,
+                      fontFamily 
+                    }}>
+                      {rewardStr}
+                    </div>
+                    <div style={{ 
+                      fontSize: isMobile ? 10 : 11, 
+                      color: '#94a3b8', 
+                      fontFamily 
+                    }}>
+                      AI3
+                    </div>
+                  </div>
+                </div>
+
+                {/* Share Price */}
+                <div style={{ 
+                  marginTop: 12,
+                  paddingTop: 12,
+                  borderTop: '1px solid #f1f5f9'
+                }}>
+                  <div style={{ 
+                    fontSize: isMobile ? 11 : 12, 
+                    color: '#64748b', 
+                    fontWeight: 500, 
+                    marginBottom: 4,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                    fontFamily 
+                  }}>
+                    Share Price
+                  </div>
+                  <div style={{ 
+                    fontSize: isMobile ? 13 : 14, 
+                    fontFamily: monoFamily,
+                    color: '#111827',
+                    fontWeight: 600,
+                    lineHeight: 1.2
+                  }} title={'Perquintill'}>
+                    <span style={{ color: '#94a3b8' }}>{prefix}</span>
+                    <span style={{ color: color }}>{suffix}</span>
+                  </div>
+                  <div style={{ 
+                    fontSize: isMobile ? 10 : 11, 
+                    color: '#94a3b8', 
+                    fontFamily,
+                    marginTop: 2
+                  }}>
+                    Perquintill
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }
@@ -299,23 +756,57 @@ export default function Dashboard(){
     endBlock: r.endBlock,
     totalStake: String(r.totalStake ?? '0'),
     operatorStakes: r.operatorStakes ?? {},
-    rewards: r.rewards ?? {}
+    rewards: r.rewards ?? {},
+    operatorSharePrices: r.operatorSharePrices ?? {}
   })), [mergedRows]);
 
   const summary = useMemo(() => {
     const last: any = mergedRows[mergedRows.length - 1];
     if (!last) {
-      return { lastEpoch: '-', totalStake: '-', operators: '-', rewardsTotal: '-' } as const;
+      return { lastEpoch: '-', totalStake: '-', operators: '-', rewardsTotal: '-', latestSharePrices: [] } as const;
     }
     const operators = Object.keys(last.operatorStakes ?? {}).length;
     const rewardsTotalBig = Object.values(last.rewards ?? {}).reduce((acc: bigint, v: any) => {
       try { return acc + BigInt(v as any); } catch { return acc; }
     }, BigInt(0));
+    
+    // Latest operator share prices and normalized ratios
+    // Live data might not include operatorSharePrices, so fall back to last known static data
+    let sp = (last.operatorSharePrices ?? {}) as Record<string, string>;
+    
+    // If no share prices in current row, find the most recent row that has share prices
+    if (Object.keys(sp).length === 0) {
+      for (let i = mergedRows.length - 2; i >= 0; i--) {
+        const staticRow = mergedRows[i];
+        if (staticRow?.operatorSharePrices && Object.keys(staticRow.operatorSharePrices).length > 0) {
+          sp = staticRow.operatorSharePrices;
+          break;
+        }
+      }
+    }
+    
+    const opIds = Object.keys(sp).sort((a,b)=>Number(a)-Number(b));
+    const values = opIds.map(id => perquintillToNumber(sp[id]) || 0);
+    const max = values.length ? Math.max(...values) : 0;
+    const min = values.length ? Math.min(...values) : 0;
+    const latestSharePrices = opIds.map(id => ({
+      id,
+      raw: sp[id],
+      decimal: formatPerquintillDecimalString(sp[id]),
+      // normalize 0..1 across current operator set
+      normalized: (function(){
+        const v = perquintillToNumber(sp[id]) || 0;
+        if (!Number.isFinite(v)) return 0;
+        if (max === min) return 1; // degenerate case
+        return (v - min) / (max - min);
+      })()
+    }));
     return {
       lastEpoch: last.epoch,
       totalStake: unit === 'AI3' ? formatTokensIntegerFromShannons(last.totalStake) : formatAmount(last.totalStake, unit),
       operators,
-      rewardsTotal: formatRewardsAmount(rewardsTotalBig.toString(), unit)
+      rewardsTotal: formatRewardsAmount(rewardsTotalBig.toString(), unit),
+      latestSharePrices
     } as const;
   }, [mergedRows, unit]);
 
@@ -324,11 +815,12 @@ export default function Dashboard(){
   const [showOp1, setShowOp1] = useState(true);
   const [stakeScale, setStakeScale] = useState<'auto' | 'fit' | 'log'>('auto');
   const [rewardsScale, setRewardsScale] = useState<'auto' | 'fit' | 'log'>('log');
+  const [shareScale, setShareScale] = useState<'auto' | 'fit' | 'log'>('auto');
+  const [shareView, setShareView] = useState<'abs' | 'delta' | 'index'>('abs');
 
   const [brush, setBrush] = useState<{ startIndex: number; endIndex: number } | null>(null);
-  const [hoverStake, setHoverStake] = useState(false);
-  const [hoverRewards, setHoverRewards] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [fullscreenChart, setFullscreenChart] = useState<'stake' | 'rewards' | 'share' | null>(null);
 
   useEffect(() => {
     const update = () => setIsMobile(typeof window !== 'undefined' && window.innerWidth < 640);
@@ -365,27 +857,57 @@ export default function Dashboard(){
     return arr;
   }, [displayRows, range]);
 
-  const chartData = useMemo(() => chartRows.map((r: any) => {
-    const rewardsVals = Object.values(r.rewards || {});
-    let rewardsTotalNum = 0;
-    try {
-      const totalBig = rewardsVals.reduce((acc: bigint, v: any) => {
-        try { return acc + BigInt(v); } catch { return acc; }
-      }, BigInt(0));
-      rewardsTotalNum = unit === 'AI3' ? tokensNumberFromShannons(totalBig.toString()) : Number(totalBig.toString());
-    } catch {
-      rewardsTotalNum = 0;
+  const chartData = useMemo(() => {
+    const base = chartRows.map((r: any) => {
+      const rewardsVals = Object.values(r.rewards || {});
+      let rewardsTotalNum = 0;
+      try {
+        const totalBig = rewardsVals.reduce((acc: bigint, v: any) => {
+          try { return acc + BigInt(v); } catch { return acc; }
+        }, BigInt(0));
+        rewardsTotalNum = unit === 'AI3' ? tokensNumberFromShannons(totalBig.toString()) : Number(totalBig.toString());
+      } catch {
+        rewardsTotalNum = 0;
+      }
+      // Convert perquintill share prices (1e18 scale) to plain numbers for display
+      const sp0Raw = r.operatorSharePrices?.['0'];
+      const sp1Raw = r.operatorSharePrices?.['1'];
+      let sp0 = 0; let sp1 = 0;
+      try { sp0 = sp0Raw ? Number(tokensPlainFromShannons(sp0Raw, 18)) : 0; } catch { sp0 = 0; }
+      try { sp1 = sp1Raw ? Number(tokensPlainFromShannons(sp1Raw, 18)) : 0; } catch { sp1 = 0; }
+
+      return {
+        epoch: r.epoch,
+        totalStake: unit === 'AI3' ? tokensNumberFromShannons(r.totalStake) : Number(r.totalStake ?? '0'),
+        stake0: unit === 'AI3' ? tokensNumberFromShannons(r.operatorStakes?.['0'] ?? '0') : Number(r.operatorStakes?.['0'] ?? '0'),
+        stake1: unit === 'AI3' ? tokensNumberFromShannons(r.operatorStakes?.['1'] ?? '0') : Number(r.operatorStakes?.['1'] ?? '0'),
+        rewards0: unit === 'AI3' ? tokensNumberFromShannons(r.rewards?.['0'] ?? '0') : Number(r.rewards?.['0'] ?? '0'),
+        rewards1: unit === 'AI3' ? tokensNumberFromShannons(r.rewards?.['1'] ?? '0') : Number(r.rewards?.['1'] ?? '0'),
+        rewardsTotal: rewardsTotalNum,
+        share0: sp0 || 1,
+        share1: sp1 || 1
+      };
+    });
+    // derive deltas (bps) and indexed series
+    let first0: number | null = null;
+    let first1: number | null = null;
+    let prev0: number | null = null;
+    let prev1: number | null = null;
+    for (let i = 0; i < base.length; i++){
+      const row: any = base[i];
+      if (first0 == null && row.share0) first0 = row.share0;
+      if (first1 == null && row.share1) first1 = row.share1;
+      const d0 = prev0 && prev0 !== 0 ? ((row.share0 - prev0) / prev0) * 10000 : 0;
+      const d1 = prev1 && prev1 !== 0 ? ((row.share1 - prev1) / prev1) * 10000 : 0;
+      row.share0Bps = Number.isFinite(d0) ? d0 : 0;
+      row.share1Bps = Number.isFinite(d1) ? d1 : 0;
+      row.share0Index = first0 && first0 !== 0 ? row.share0 / first0 : 1;
+      row.share1Index = first1 && first1 !== 0 ? row.share1 / first1 : 1;
+      prev0 = row.share0;
+      prev1 = row.share1;
     }
-    return {
-      epoch: r.epoch,
-      totalStake: unit === 'AI3' ? tokensNumberFromShannons(r.totalStake) : Number(r.totalStake ?? '0'),
-      stake0: unit === 'AI3' ? tokensNumberFromShannons(r.operatorStakes?.['0'] ?? '0') : Number(r.operatorStakes?.['0'] ?? '0'),
-      stake1: unit === 'AI3' ? tokensNumberFromShannons(r.operatorStakes?.['1'] ?? '0') : Number(r.operatorStakes?.['1'] ?? '0'),
-      rewards0: unit === 'AI3' ? tokensNumberFromShannons(r.rewards?.['0'] ?? '0') : Number(r.rewards?.['0'] ?? '0'),
-      rewards1: unit === 'AI3' ? tokensNumberFromShannons(r.rewards?.['1'] ?? '0') : Number(r.rewards?.['1'] ?? '0'),
-      rewardsTotal: rewardsTotalNum
-    };
-  }), [chartRows, unit]);
+    return base;
+  }, [chartRows, unit]);
 
   function computeYDomain(
     data: any[],
@@ -428,6 +950,16 @@ export default function Dashboard(){
     rewardsScale
   ), [chartData, showOp0, showOp1, rewardsScale]);
 
+  const shareYDomain = useMemo(() => {
+    const keys = shareView === 'delta'
+      ? [ ...(showOp0 ? ['share0Bps'] : []), ...(showOp1 ? ['share1Bps'] : []) ]
+      : shareView === 'index'
+        ? [ ...(showOp0 ? ['share0Index'] : []), ...(showOp1 ? ['share1Index'] : []) ]
+        : [ ...(showOp0 ? ['share0'] : []), ...(showOp1 ? ['share1'] : []) ];
+    const mode = shareView === 'delta' && shareScale === 'log' ? 'fit' : shareScale;
+    return computeYDomain(chartData, keys, mode);
+  }, [chartData, showOp0, showOp1, shareScale, shareView]);
+
   const sharedBrushProps: any = brush ? { startIndex: brush.startIndex, endIndex: brush.endIndex } : {};
   function handleBrushChange(range: any){
     if (!range) return;
@@ -437,66 +969,186 @@ export default function Dashboard(){
     }
   }
 
-  return (
-    <div style={{ minHeight: '100vh', padding: '24px', background: '#f9fafb' }}>
-      <h1 style={{ fontSize: '22px', fontWeight: 600, color: '#111827', marginBottom: '16px' }}>Auto EVM (domain 0) — Epoch Staking & Rewards</h1>
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px', marginBottom: '12px' }}>
-        <StatCard label="Latest epoch" value={summary.lastEpoch} live={isSummaryLive} />
-        <StatCard label="Total stake (latest)" value={summary.totalStake} live={isSummaryLive} />
-        <StatCard label="Operators active" value={summary.operators} live={isSummaryLive} />
-        <StatCard label="Rewards (latest)" value={summary.rewardsTotal} live={isSummaryLive} />
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: isMobile ? '16px' : '24px' }}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: isMobile ? '4px' : '6px', alignItems: 'center', background: '#f5f5f5', border: '1px solid #e5e7eb', borderRadius: '12px', padding: isMobile ? '8px 10px' : '10px 12px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', position: 'sticky', top: 0, zIndex: 20 }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', marginRight: '8px' }}>
-            <span
-              title={liveStatus}
-              style={{
-                width: 8,
-                height: 8,
-                borderRadius: 9999,
-                background:
-                  liveStatus === 'live' ? '#10B981' :
-                  liveStatus === 'connecting' ? '#F59E0B' :
-                  liveStatus === 'error' ? '#EF4444' : '#9CA3AF'
-              }}
-            />
+  // Fullscreen overlay component
+  function FullscreenChart({ type, onClose }: { type: 'stake' | 'rewards' | 'share'; onClose: () => void }) {
+    const fullscreenHeight = '90vh';
+    
+    return (
+      <div style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        background: 'rgba(0, 0, 0, 0.8)',
+        zIndex: 1000,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '20px'
+      }}>
+        <div style={{
+          background: 'linear-gradient(145deg, #ffffff 0%, #f8fafc 100%)',
+          borderRadius: '16px',
+          border: '1px solid #e2e8f0',
+          boxShadow: '0 25px 50px rgba(0, 0, 0, 0.25), 0 10px 20px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
+          width: '95vw',
+          height: '95vh',
+          padding: '24px',
+          position: 'relative'
+        }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: '20px',
+            paddingBottom: '16px',
+            borderBottom: '1px solid #f3f4f6'
+          }}>
+            <h2 style={{
+              fontSize: '24px',
+              fontWeight: 600,
+              color: '#111827',
+              margin: 0,
+              fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", sans-serif'
+            }}>
+              {type === 'stake' ? 'Total Stake by Epoch' : 
+               type === 'rewards' ? 'Operator Rewards per Epoch' : 
+               'Operator Share Price (Perquintill)'}
+            </h2>
             <button
-              onClick={() => {
-                const next = !isLive;
-                setIsLive(next);
-                if (!next) setLiveStatus('idle');
-              }}
-              style={{ 
-                padding: segPad, 
-                fontSize: microFont, 
-                border: '1px solid #d1d5db', 
-                borderRadius: '8px', 
-                background: 'white', 
-                cursor: 'pointer', 
-                transition: 'all 0.15s ease-in-out',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+              onClick={onClose}
+              style={{
+                padding: '8px 12px',
+                fontSize: '14px',
+                border: '1px solid #e2e8f0',
+                borderRadius: '8px',
+                background: 'white',
+                color: '#64748b',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
                 fontWeight: 500
               }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.boxShadow = '0 2px 6px rgba(0,0,0,0.15)';
-                e.currentTarget.style.transform = 'translateY(-1px)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
-                e.currentTarget.style.transform = 'translateY(0)';
-              }}
-            >{isLive ? 'Live: On' : 'Live: Off'}</button>
-            {isLive && lastLiveAt && (
-              <span style={{ fontSize: '11px', color: '#6b7280' }}>
-                Updated {Math.max(0, Math.floor(((Date.now() - lastLiveAt) / 1000)))}s ago
-              </span>
-            )}
+            >
+              ✕ Close
+            </button>
           </div>
+          
+          <div style={{ height: 'calc(100% - 80px)' }}>
+            <ChartErrorBoundary>
+              <ResponsiveContainer width="100%" height="100%">
+                {type === 'stake' ? (
+                  <LineChart data={chartData} margin={{ top: 20, right: 40, left: 20, bottom: 40 }} syncId="epochs" syncMethod="index">
+                    <CartesianGrid stroke="#e5e7eb" strokeDasharray="3 3" />
+                    <XAxis dataKey="epoch" tick={{ fontSize: 12 }} />
+                    <YAxis tickFormatter={(v)=>formatYAxisTick(Number(v), unit)} tick={{ fontSize: 12 }} domain={stakeYDomain} scale={stakeScale === 'log' ? 'log' : 'auto'} allowDataOverflow />
+                    <Tooltip formatter={(v)=>`${formatTooltipNumber(Number(v), unit, 'stake')} ${unit}`} labelFormatter={(l)=>`Epoch ${l}`} />
+                    <Line type="monotone" dataKey="totalStake" dot={false} name="Total Stake" strokeWidth={3} stroke={COLORS.total} />
+                    {showOp0 && <Line type="monotone" dataKey="stake0" dot={false} name="Operator 0 Stake" stroke={COLORS.op0} strokeDasharray="6 3" strokeWidth={2} />}
+                    {showOp1 && <Line type="monotone" dataKey="stake1" dot={false} name="Operator 1 Stake" stroke={COLORS.op1} strokeDasharray="6 3" strokeWidth={2} />}
+                  </LineChart>
+                ) : type === 'rewards' ? (
+                  <ComposedChart data={chartData} margin={{ top: 20, right: 40, left: 20, bottom: 40 }} syncId="epochs" syncMethod="index">
+                    <CartesianGrid stroke="#e5e7eb" strokeDasharray="3 3" />
+                    <XAxis dataKey="epoch" tick={{ fontSize: 12 }} />
+                    <YAxis tickFormatter={(v)=>formatYAxisTick(Number(v), unit)} tick={{ fontSize: 12 }} domain={rewardsYDomain} scale={rewardsScale === 'log' ? 'log' : 'auto'} allowDataOverflow />
+                    <Tooltip formatter={(v)=>`${formatTooltipNumber(Number(v), unit, 'rewards')} ${unit}`} labelFormatter={(l)=>`Epoch ${l}`} />
+                    {showOp0 && <Bar dataKey="rewards0" name="Operator 0" fill={COLORS.op0} radius={[3,3,0,0]} />}
+                    {showOp1 && <Bar dataKey="rewards1" name="Operator 1" fill={COLORS.op1} radius={[3,3,0,0]} />}
+                    <Line type="monotone" dataKey="rewardsTotal" name="Total Rewards" dot={false} stroke={COLORS.total} strokeWidth={3} connectNulls />
+                  </ComposedChart>
+                ) : (
+                  <LineChart data={chartData} margin={{ top: 20, right: 40, left: 20, bottom: 40 }} syncId="epochs" syncMethod="index">
+                    <CartesianGrid stroke="#e5e7eb" strokeDasharray="3 3" />
+                    <XAxis dataKey="epoch" tick={{ fontSize: 12 }} />
+                    <YAxis tickFormatter={(v)=> {
+                      if (shareView === 'delta') return `${Number(v).toFixed(1)} bps`;
+                      if (shareView === 'index') return Number(v).toExponential(2);
+                      return Number(v).toExponential(2);
+                    }} tick={{ fontSize: 12 }} domain={shareYDomain} scale={shareScale === 'log' ? 'log' : 'auto'} allowDataOverflow />
+                    <Tooltip formatter={(v)=> {
+                      if (shareView === 'delta') return `${Number(v).toFixed(2)} bps`;
+                      if (shareView === 'index') return `${Number(v).toExponential(6)}×`;
+                      return Number(v).toExponential(8);
+                    }} labelFormatter={(l)=>`Epoch ${l}`} />
+                    {showOp0 && <Line type="monotone" dataKey={shareView === 'delta' ? 'share0Bps' : (shareView === 'index' ? 'share0Index' : 'share0')} dot={false} name="Operator 0" stroke={COLORS.op0} strokeWidth={2} />}
+                    {showOp1 && <Line type="monotone" dataKey={shareView === 'delta' ? 'share1Bps' : (shareView === 'index' ? 'share1Index' : 'share1')} dot={false} name="Operator 1" stroke={COLORS.op1} strokeWidth={2} />}
+                  </LineChart>
+                )}
+              </ResponsiveContainer>
+            </ChartErrorBoundary>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const handleDownloadCSV = () => {
+    const opsStakeKeys = Array.from(new Set(displayRows.flatMap((r: any) => Object.keys(r.operatorStakes || {})))).sort((a,b)=>Number(a)-Number(b));
+    const opsRewardKeys = Array.from(new Set(displayRows.flatMap((r: any) => Object.keys(r.rewards || {})))).sort((a,b)=>Number(a)-Number(b));
+    const header = ['epoch','startBlock','endBlock','totalStake', ...opsStakeKeys.map(k=>`stake${k}`), ...opsRewardKeys.map(k=>`rewards${k}`)];
+    const csvRows = displayRows.map((r: any) => {
+      // Use raw values without any formatting - keep as bigints/shannons
+      const totalStakeStr = String(r.totalStake ?? '0');
+      const stakeVals = opsStakeKeys.map((k)=> String(r.operatorStakes?.[k] ?? '0'));
+      const rewardVals = opsRewardKeys.map((k)=> String(r.rewards?.[k] ?? '0'));
+      return [r.epoch, r.startBlock, r.endBlock, totalStakeStr, ...stakeVals, ...rewardVals];
+    });
+    const csv = [header.join(','), ...csvRows.map((r:any)=>r.join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const latestEpoch = baseRows.length ? baseRows[baseRows.length - 1].epoch : '';
+    a.download = `epochs_raw${latestEpoch !== '' ? `_e${latestEpoch}` : ''}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div style={{ minHeight: '100vh', padding: isMobile ? '12px' : '16px 3%', background: 'linear-gradient(135deg, #e5e7eb 0%, #f3f4f6 50%, #e5e7eb 100%)' }}>
+      <DashboardHeader 
+        isLive={isLive}
+        liveStatus={liveStatus}
+        lastLiveAt={lastLiveAt}
+        setIsLive={setIsLive}
+        setLiveStatus={setLiveStatus}
+        onDownloadCSV={handleDownloadCSV}
+        isMobile={isMobile}
+      />
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 0, marginBottom: isMobile ? 16 : 20 }}>
+        <div>
+          <DomainSummary summary={summary as any} isMobile={isMobile} />
+        </div>
+        {Array.isArray((summary as any).latestSharePrices) && (summary as any).latestSharePrices.length > 0 && (
+          <div>
+            <OperatorTable rows={displayRows} latest={summary as any} isMobile={isMobile} showOp0={showOp0} showOp1={showOp1} setShowOp0={setShowOp0} setShowOp1={setShowOp1} />
+          </div>
+        )}
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: isMobile ? '12px' : '16px' }}>
+        <div style={{ 
+          display: 'flex', 
+          flexWrap: 'wrap', 
+          gap: isMobile ? '8px' : '10px', 
+          alignItems: 'center', 
+          background: 'linear-gradient(135deg, #e2e8f0 0%, #d1d5db 100%)', 
+          border: '2px solid #9ca3af', 
+          borderRadius: '10px', 
+          padding: isMobile ? '12px 16px' : '16px 20px', 
+          boxShadow: '0 6px 12px rgba(0,0,0,0.15), 0 2px 6px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255, 255, 255, 0.3)', 
+          position: 'sticky', 
+          top: 0, 
+          zIndex: 20, 
+          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", sans-serif',
+          backdropFilter: 'blur(12px)'
+        }}>
+          <div style={{ fontSize: isMobile ? 12 : 13, color: '#374151', fontWeight: 600 }}>Chart Controls:</div>
+          
           <div style={{ fontSize: microFont, color: '#6b7280' }}>Range:</div>
-          <div style={{ display: 'inline-flex', border: '1px solid #d1d5db', borderRadius: '8px', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+          <div style={{ display: 'inline-flex', border: '1px solid #e2e8f0', borderRadius: '6px', overflow: 'hidden', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
             {(['50','200','All'] as const).map(key => (
               <button
                 key={key}
@@ -524,9 +1176,11 @@ export default function Dashboard(){
               >{key === 'All' ? 'All' : `Last ${key}`}</button>
             ))}
           </div>
-          <div style={{ width: '1px', height: '20px', background: '#d1d5db', margin: '0 4px' }} />
+          
+          <div style={{ width: '1px', height: '16px', background: '#d1d5db', margin: '0 4px' }} />
+          
           <div style={{ fontSize: microFont, color: '#6b7280' }}>Unit:</div>
-          <div style={{ display: 'inline-flex', border: '1px solid #d1d5db', borderRadius: '8px', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+          <div style={{ display: 'inline-flex', border: '1px solid #e2e8f0', borderRadius: '6px', overflow: 'hidden', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
             {(['AI3','Shannons'] as const).map(key => (
               <button
                 key={key}
@@ -554,64 +1208,61 @@ export default function Dashboard(){
               >{key}</button>
             ))}
           </div>
-          <div style={{ width: '1px', height: '20px', background: '#f3f4f6', margin: '0 4px' }} />
-          {/* moved per-chart scale controls into each chart container */}
-          <div style={{ fontSize: microFont, color: '#6b7280' }}>Operators:</div>
-          <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: microFont, padding: '4px 6px', borderRadius: '6px', background: 'white', border: '1px solid #d1d5db', cursor: 'pointer', transition: 'all 0.15s ease-in-out' }}>
-            <input type="checkbox" checked={showOp0} onChange={(e)=>setShowOp0(e.target.checked)} style={{ accentColor: '#111827' }} />
-            <span style={{ fontWeight: 500 }}>0</span>
-          </label>
-          <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: microFont, padding: '4px 6px', borderRadius: '6px', background: 'white', border: '1px solid #d1d5db', cursor: 'pointer', transition: 'all 0.15s ease-in-out' }}>
-            <input type="checkbox" checked={showOp1} onChange={(e)=>setShowOp1(e.target.checked)} style={{ accentColor: '#111827' }} />
-            <span style={{ fontWeight: 500 }}>1</span>
-          </label>
-          <div style={{ flex: 1 }} />
-          <button onClick={() => {
-            const opsStakeKeys = Array.from(new Set(displayRows.flatMap((r: any) => Object.keys(r.operatorStakes || {})))).sort((a,b)=>Number(a)-Number(b));
-            const opsRewardKeys = Array.from(new Set(displayRows.flatMap((r: any) => Object.keys(r.rewards || {})))).sort((a,b)=>Number(a)-Number(b));
-            const header = ['epoch','startBlock','endBlock','totalStake', ...opsStakeKeys.map(k=>`stake${k}`), ...opsRewardKeys.map(k=>`rewards${k}`)];
-            const csvRows = displayRows.map((r: any) => {
-              // Use raw values without any formatting - keep as bigints/shannons
-              const totalStakeStr = String(r.totalStake ?? '0');
-              const stakeVals = opsStakeKeys.map((k)=> String(r.operatorStakes?.[k] ?? '0'));
-              const rewardVals = opsRewardKeys.map((k)=> String(r.rewards?.[k] ?? '0'));
-              return [r.epoch, r.startBlock, r.endBlock, totalStakeStr, ...stakeVals, ...rewardVals];
-            });
-            const csv = [header.join(','), ...csvRows.map((r:any)=>r.join(','))].join('\n');
-            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            const latestEpoch = baseRows.length ? baseRows[baseRows.length - 1].epoch : '';
-            a.download = `epochs_raw${latestEpoch !== '' ? `_e${latestEpoch}` : ''}.csv`;
-            a.click();
-            URL.revokeObjectURL(url);
-          }} style={{ 
-            padding: segPad, 
-            fontSize: microFont, 
-            border: '1px solid #d1d5db', 
-            borderRadius: '8px', 
-            background: 'white', 
-            cursor: 'pointer', 
-            transition: 'all 0.15s ease-in-out',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-            fontWeight: 500
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.boxShadow = '0 2px 6px rgba(0,0,0,0.15)';
-            e.currentTarget.style.transform = 'translateY(-1px)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
-            e.currentTarget.style.transform = 'translateY(0)';
-          }}>Download CSV</button>
         </div>
-        <div onMouseEnter={() => setHoverStake(true)} onMouseLeave={() => setHoverStake(false)} style={{ background: 'white', borderRadius: '16px', border: '1px solid #e5e7eb', boxShadow: hoverStake ? '0 8px 24px rgba(0,0,0,0.12)' : '0 2px 10px rgba(0,0,0,0.08)', transition: 'box-shadow 0.2s ease-in-out', padding: chartPadding }}>
-          <h2 style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '18px', fontWeight: 500, color: '#111827', paddingBottom: '10px', marginBottom: '14px', borderBottom: '1px solid #f3f4f6' }}>
-            <span>Total Stake by Epoch</span>
-            {isLive && <span title="Live" style={{ width: 6, height: 6, borderRadius: 9999, background: '#10B981', display: 'inline-block' }} />}
+        <div style={{ 
+          background: 'linear-gradient(145deg, #ffffff 0%, #f8fafc 100%)', 
+          borderRadius: '12px', 
+          border: '2px solid #9ca3af', 
+          boxShadow: '0 8px 16px rgba(0,0,0,0.18), 0 4px 8px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255, 255, 255, 0.3)', 
+          padding: isMobile ? '16px' : '20px',
+          position: 'relative'
+        }}>
+          <h2 style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'space-between',
+            fontSize: '18px', 
+            fontWeight: 600, 
+            color: '#111827', 
+            paddingBottom: '12px', 
+            marginBottom: '16px', 
+            borderBottom: '1px solid #f3f4f6', 
+            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", sans-serif' 
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span>Total Stake by Epoch</span>
+              {isLive && <span title="Live" style={{ width: 6, height: 6, borderRadius: '50%', background: '#10B981', display: 'inline-block' }} />}
+            </div>
+            <button
+              onClick={() => setFullscreenChart(fullscreenChart === 'stake' ? null : 'stake')}
+              style={{
+                padding: isMobile ? '8px 12px' : '10px 16px',
+                fontSize: isMobile ? '14px' : '16px',
+                border: '1px solid #d1d5db',
+                borderRadius: '8px',
+                background: fullscreenChart === 'stake' ? '#111827' : 'white',
+                color: fullscreenChart === 'stake' ? 'white' : '#374151',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+                fontWeight: 600,
+                boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+              }}
+              title="Toggle fullscreen"
+              onMouseEnter={(e) => {
+                if (fullscreenChart !== 'stake') {
+                  e.currentTarget.style.background = '#f3f4f6';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (fullscreenChart !== 'stake') {
+                  e.currentTarget.style.background = 'white';
+                }
+              }}
+            >
+              {fullscreenChart === 'stake' ? '⤓' : '⤢'} {isMobile ? '' : 'Fullscreen'}
+            </button>
           </h2>
-          <div style={{ height: chartHeight }}>
+          <div style={{ height: fullscreenChart === 'stake' ? '80vh' : chartHeight }}>
             <ChartErrorBoundary>
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartData} margin={{ top: 10, right: 24, left: 8, bottom: 24 }} syncId="epochs" syncMethod="index">
@@ -626,34 +1277,83 @@ export default function Dashboard(){
               </LineChart>
             </ResponsiveContainer>
             </ChartErrorBoundary>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', marginTop: 8, flexWrap: 'wrap', gap: 8 }}>
-              <div style={{ display: 'inline-flex', border: '1px solid #e5e7eb', borderRadius: '8px', overflow: 'hidden', flexShrink: 0 }}>
-                {(['auto','fit','log'] as const).map(key => (
-                  <button
-                    key={key}
-                    onClick={() => setStakeScale(key)}
-                    style={{
-                      padding: isMobile ? '3px 6px' : '4px 8px',
-                      fontSize: microFont,
-                      textTransform: 'capitalize',
-                      background: stakeScale === key ? '#111827' : 'white',
-                      color: stakeScale === key ? 'white' : '#111827',
-                      border: 'none',
-                      cursor: 'pointer'
-                    }}
-                  >{key}</button>
-                ))}
-              </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', marginTop: 8, flexWrap: 'wrap', gap: 8, paddingTop: 8, borderTop: '1px solid #f1f5f9' }}>
+            <div style={{ display: 'inline-flex', border: '1px solid #e2e8f0', borderRadius: '4px', overflow: 'hidden', flexShrink: 0 }}>
+              {(['auto','fit','log'] as const).map(key => (
+                <button
+                  key={key}
+                  onClick={() => setStakeScale(key)}
+                  style={{
+                    padding: isMobile ? '3px 6px' : '4px 8px',
+                    fontSize: microFont,
+                    textTransform: 'capitalize',
+                    background: stakeScale === key ? '#0f172a' : 'white',
+                    color: stakeScale === key ? 'white' : '#64748b',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontWeight: stakeScale === key ? 500 : 400
+                  }}
+                >{key}</button>
+              ))}
             </div>
           </div>
         </div>
 
-        <div onMouseEnter={() => setHoverRewards(true)} onMouseLeave={() => setHoverRewards(false)} style={{ background: 'white', borderRadius: '16px', border: '1px solid #e5e7eb', boxShadow: hoverRewards ? '0 8px 24px rgba(0,0,0,0.12)' : '0 2px 10px rgba(0,0,0,0.08)', transition: 'box-shadow 0.2s ease-in-out', padding: chartPadding }}>
-          <h2 style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '18px', fontWeight: 500, color: '#111827', paddingBottom: '10px', marginBottom: '14px', borderBottom: '1px solid #f3f4f6' }}>
-            <span>Operator Rewards per Epoch</span>
-            {isLive && <span title="Live" style={{ width: 6, height: 6, borderRadius: 9999, background: '#10B981', display: 'inline-block' }} />}
+        <div style={{ 
+          background: 'linear-gradient(145deg, #ffffff 0%, #f8fafc 100%)', 
+          borderRadius: '12px', 
+          border: '2px solid #9ca3af', 
+          boxShadow: '0 8px 16px rgba(0,0,0,0.18), 0 4px 8px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255, 255, 255, 0.3)', 
+          padding: isMobile ? '16px' : '20px',
+          position: 'relative'
+        }}>
+          <h2 style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'space-between',
+            fontSize: '18px', 
+            fontWeight: 600, 
+            color: '#111827', 
+            paddingBottom: '12px', 
+            marginBottom: '16px', 
+            borderBottom: '1px solid #f3f4f6', 
+            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", sans-serif' 
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span>Operator Rewards per Epoch</span>
+              {isLive && <span title="Live" style={{ width: 6, height: 6, borderRadius: '50%', background: '#10B981', display: 'inline-block' }} />}
+            </div>
+            <button
+              onClick={() => setFullscreenChart(fullscreenChart === 'rewards' ? null : 'rewards')}
+              style={{
+                padding: isMobile ? '8px 12px' : '10px 16px',
+                fontSize: isMobile ? '14px' : '16px',
+                border: '1px solid #d1d5db',
+                borderRadius: '8px',
+                background: fullscreenChart === 'rewards' ? '#111827' : 'white',
+                color: fullscreenChart === 'rewards' ? 'white' : '#374151',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+                fontWeight: 600,
+                boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+              }}
+              title="Toggle fullscreen"
+              onMouseEnter={(e) => {
+                if (fullscreenChart !== 'rewards') {
+                  e.currentTarget.style.background = '#f3f4f6';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (fullscreenChart !== 'rewards') {
+                  e.currentTarget.style.background = 'white';
+                }
+              }}
+            >
+              {fullscreenChart === 'rewards' ? '⤓' : '⤢'} {isMobile ? '' : 'Fullscreen'}
+            </button>
           </h2>
-          <div style={{ height: chartHeight }}>
+          <div style={{ height: fullscreenChart === 'rewards' ? '80vh' : chartHeight }}>
             <ChartErrorBoundary>
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={chartData} margin={{ top: 10, right: 24, left: 8, bottom: 24 }} syncId="epochs" syncMethod="index">
@@ -668,28 +1368,152 @@ export default function Dashboard(){
               </ComposedChart>
             </ResponsiveContainer>
             </ChartErrorBoundary>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', marginTop: 8, flexWrap: 'wrap', gap: 8 }}>
-              <div style={{ display: 'inline-flex', border: '1px solid #e5e7eb', borderRadius: '8px', overflow: 'hidden', flexShrink: 0 }}>
-                {(['auto','fit','log'] as const).map(key => (
-                  <button
-                    key={key}
-                    onClick={() => setRewardsScale(key)}
-                    style={{
-                      padding: isMobile ? '3px 6px' : '4px 8px',
-                      fontSize: microFont,
-                      textTransform: 'capitalize',
-                      background: rewardsScale === key ? '#111827' : 'white',
-                      color: rewardsScale === key ? 'white' : '#111827',
-                      border: 'none',
-                      cursor: 'pointer'
-                    }}
-                  >{key}</button>
-                ))}
-              </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', marginTop: 8, flexWrap: 'wrap', gap: 8, paddingTop: 8, borderTop: '1px solid #f1f5f9' }}>
+            <div style={{ display: 'inline-flex', border: '1px solid #e2e8f0', borderRadius: '4px', overflow: 'hidden', flexShrink: 0 }}>
+              {(['auto','fit','log'] as const).map(key => (
+                <button
+                  key={key}
+                  onClick={() => setRewardsScale(key)}
+                  style={{
+                    padding: isMobile ? '3px 6px' : '4px 8px',
+                    fontSize: microFont,
+                    textTransform: 'capitalize',
+                    background: rewardsScale === key ? '#0f172a' : 'white',
+                    color: rewardsScale === key ? 'white' : '#64748b',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontWeight: rewardsScale === key ? 500 : 400
+                  }}
+                >{key}</button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div style={{ 
+          background: 'linear-gradient(145deg, #ffffff 0%, #f8fafc 100%)', 
+          borderRadius: '12px', 
+          border: '2px solid #9ca3af', 
+          boxShadow: '0 8px 16px rgba(0,0,0,0.18), 0 4px 8px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255, 255, 255, 0.3)', 
+          padding: isMobile ? '16px' : '20px',
+          position: 'relative'
+        }}>
+          <h2 style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'space-between',
+            fontSize: '18px', 
+            fontWeight: 600, 
+            color: '#111827', 
+            paddingBottom: '12px', 
+            marginBottom: '16px', 
+            borderBottom: '1px solid #f3f4f6', 
+            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", sans-serif' 
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span>Operator Share Price (Perquintill)</span>
+            </div>
+            <button
+              onClick={() => setFullscreenChart(fullscreenChart === 'share' ? null : 'share')}
+              style={{
+                padding: isMobile ? '8px 12px' : '10px 16px',
+                fontSize: isMobile ? '14px' : '16px',
+                border: '1px solid #d1d5db',
+                borderRadius: '8px',
+                background: fullscreenChart === 'share' ? '#111827' : 'white',
+                color: fullscreenChart === 'share' ? 'white' : '#374151',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+                fontWeight: 600,
+                boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+              }}
+              title="Toggle fullscreen"
+              onMouseEnter={(e) => {
+                if (fullscreenChart !== 'share') {
+                  e.currentTarget.style.background = '#f3f4f6';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (fullscreenChart !== 'share') {
+                  e.currentTarget.style.background = 'white';
+                }
+              }}
+            >
+              {fullscreenChart === 'share' ? '⤓' : '⤢'} {isMobile ? '' : 'Fullscreen'}
+            </button>
+          </h2>
+          <div style={{ height: fullscreenChart === 'share' ? '80vh' : chartHeight }}>
+            <ChartErrorBoundary>
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={chartData} margin={{ top: 10, right: 24, left: 8, bottom: 24 }} syncId="epochs" syncMethod="index">
+                <CartesianGrid stroke="#e5e7eb" strokeDasharray="3 3" />
+                <XAxis dataKey="epoch" tick={{ fontSize: microFont }} />
+                <YAxis tickFormatter={(v)=> {
+                  if (shareView === 'delta') return `${Number(v).toFixed(1)} bps`;
+                  if (shareView === 'index') return Number(v).toExponential(2);
+                  return Number(v).toExponential(2);
+                }} tick={{ fontSize: microFont }} domain={shareYDomain} scale={shareScale === 'log' ? 'log' : 'auto'} allowDataOverflow />
+                <Tooltip formatter={(v)=> {
+                  if (shareView === 'delta') return `${Number(v).toFixed(2)} bps`;
+                  if (shareView === 'index') return `${Number(v).toExponential(6)}×`;
+                  return Number(v).toExponential(8);
+                }} labelFormatter={(l)=>`Epoch ${l}`} />
+                {showOp0 && <Line type="monotone" dataKey={shareView === 'delta' ? 'share0Bps' : (shareView === 'index' ? 'share0Index' : 'share0')} dot={false} name="Operator 0" stroke={COLORS.op0} />}
+                {showOp1 && <Line type="monotone" dataKey={shareView === 'delta' ? 'share1Bps' : (shareView === 'index' ? 'share1Index' : 'share1')} dot={false} name="Operator 1" stroke={COLORS.op1} />}
+                <Brush dataKey="epoch" height={isMobile ? 12 : 14} stroke="#9CA3AF" travellerWidth={isMobile ? 6 : 8} onChange={handleBrushChange} {...sharedBrushProps} />
+              </LineChart>
+            </ResponsiveContainer>
+            </ChartErrorBoundary>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', marginTop: 8, flexWrap: 'wrap', gap: 8, paddingTop: 8, borderTop: '1px solid #f1f5f9' }}>
+            <div style={{ display: 'inline-flex', border: '1px solid #e2e8f0', borderRadius: '4px', overflow: 'hidden', flexShrink: 0 }}>
+              {(['auto','fit','log'] as const).map(key => (
+                <button
+                  key={key}
+                  onClick={() => setShareScale(key)}
+                  style={{
+                    padding: isMobile ? '3px 6px' : '4px 8px',
+                    fontSize: microFont,
+                    textTransform: 'capitalize',
+                    background: shareScale === key ? '#0f172a' : 'white',
+                    color: shareScale === key ? 'white' : '#64748b',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontWeight: shareScale === key ? 500 : 400
+                  }}
+                >{key}</button>
+              ))}
+            </div>
+            <div style={{ display: 'inline-flex', border: '1px solid #e2e8f0', borderRadius: '4px', overflow: 'hidden', flexShrink: 0 }}>
+              {(['delta','index','abs'] as const).map(key => (
+                <button
+                  key={key}
+                  onClick={() => setShareView(key)}
+                  style={{
+                    padding: isMobile ? '3px 6px' : '4px 8px',
+                    fontSize: microFont,
+                    textTransform: 'capitalize',
+                    background: shareView === key ? '#0f172a' : 'white',
+                    color: shareView === key ? 'white' : '#64748b',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontWeight: shareView === key ? 500 : 400
+                  }}
+                >{key}</button>
+              ))}
             </div>
           </div>
         </div>
       </div>
+
+      {/* Fullscreen Chart Overlay */}
+      {fullscreenChart && (
+        <FullscreenChart 
+          type={fullscreenChart} 
+          onClose={() => setFullscreenChart(null)} 
+        />
+      )}
     </div>
   );
 }
