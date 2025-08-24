@@ -43628,5 +43628,272 @@
       "0": "1000034597470114663",
       "1": "1000039925215960737"
     }
+  },
+  {
+    "domainId": 0,
+    "epoch": 2252,
+    "startBlock": 4122166,
+    "startHash": "0xe61c7442713ed21fd208ffc5b0d1b79ad6e509b68792b57ce207aca26825b2e8",
+    "endBlock": 4122286,
+    "endHash": "0x6b9500054d1ba35112fbea76404c9c61f40b44884f92ddcb26c62f6817ac7655",
+    "totalStake": "2842542534143197458896792",
+    "operatorStakes": {
+      "0": "1621319481271115740650716",
+      "1": "1221223052872081718246076"
+    },
+    "rewards": {
+      "0": "628174531715876",
+      "1": "1413392703234023"
+    }
+  },
+  {
+    "domainId": 0,
+    "epoch": 2253,
+    "startBlock": 4122287,
+    "startHash": "0xca34bd45c5ed6bf8647af8d4c503fa524c84a4cbd4547fa116a942e208dc53b9",
+    "endBlock": 4122400,
+    "endHash": "0x2af7a3925ea908fb231e07923aa22555b94cdd82c24bb954cd1168149ae7349f",
+    "totalStake": "2842542536164349021497193",
+    "operatorStakes": {
+      "0": "1621319481893008527049434",
+      "1": "1221223054271340494447759"
+    },
+    "rewards": {
+      "1": "1020783627883600"
+    }
+  },
+  {
+    "domainId": 0,
+    "epoch": 2254,
+    "startBlock": 4122401,
+    "startHash": "0xe6b3352f87c33590fa874d59335ce08be5ea925284ea1268ca888d479910cc68",
+    "endBlock": 4122518,
+    "endHash": "0xa602ff7cb3099d3d86d070e7f7ea12b652e04831f78f8749f6e51d5363bc3d77",
+    "totalStake": "2842542537174924813101957",
+    "operatorStakes": {
+      "0": "1621319481893008527049434",
+      "1": "1221223055281916286052523"
+    },
+    "rewards": {
+      "0": "612470180925240",
+      "1": "408313453950160"
+    }
+  },
+  {
+    "domainId": 0,
+    "epoch": 2255,
+    "startBlock": 4122519,
+    "startHash": "0x5557e1ed5b73ba8663a4005a7abbe92e1fff3046f4d65b821ed8d99cec98fcce",
+    "endBlock": 4122639,
+    "endHash": "0x43ed1fb49a02d2160cbe5dcc71a04522fcbb35c389056665adc8c2cabd342913",
+    "totalStake": "2842542538185500611628604",
+    "operatorStakes": {
+      "0": "1621319482499354006165422",
+      "1": "1221223055686146605463182"
+    },
+    "rewards": {
+      "1": "1020783642005800"
+    }
+  },
+  {
+    "domainId": 0,
+    "epoch": 2256,
+    "startBlock": 4122640,
+    "startHash": "0xba7c065dade9f7df69aeeed8db11484e212f1cc328265ade012ed37a1f3521eb",
+    "endBlock": 4122759,
+    "endHash": "0x116e2dceed669c538aa5d352f8480871a527b9c63674ede6b06cfbef7c531361",
+    "totalStake": "2842542539196076417214346",
+    "operatorStakes": {
+      "0": "1621319482499354006165422",
+      "1": "1221223056696722411048924"
+    },
+    "rewards": {
+      "0": "1701306086095566",
+      "1": "340261218641233"
+    }
+  },
+  {
+    "domainId": 0,
+    "epoch": 2257,
+    "startBlock": 4122760,
+    "startHash": "0xe4403c48490874b91f728383d4f8864c55d7ab84b5dbadb4a71512507b8f1ccc",
+    "endBlock": 4122875,
+    "endHash": "0xb3cabc956fe0b19b23dafb8748162cd04e26ecbf4fbf3c7254aa0577f8dec499",
+    "totalStake": "2842550541217228048903778",
+    "operatorStakes": {
+      "0": "1621327484183647031400033",
+      "1": "1221223057033581017503745"
+    },
+    "rewards": {
+      "0": "510391831599500",
+      "1": "510391831599500"
+    }
+  },
+  {
+    "domainId": 0,
+    "epoch": 2258,
+    "startBlock": 4122876,
+    "startHash": "0x61b993d5922fa0606113be442aedff7e66608fd80bba30890e4057228c7372f2",
+    "endBlock": 4123005,
+    "endHash": "0x3224214914a0d1930b43a6c627444c6eafd2e793bfe76cddbbab25ae10df98ff",
+    "totalStake": "2844950542227803875470788",
+    "operatorStakes": {
+      "0": "1623727484688934944683538",
+      "1": "1221223057538868930787250"
+    },
+    "rewards": {
+      "0": "680522446747666",
+      "1": "340261223373833"
+    }
+  },
+  {
+    "domainId": 0,
+    "epoch": 2259,
+    "startBlock": 4123006,
+    "startHash": "0x5a224bc15b701f56139031df32deb3e335e71de10951d3f58c332fcfadc83bf1",
+    "endBlock": 4123130,
+    "endHash": "0x5cfda875230e3e4b2dbd8494c7b874f48db74c29a336f51abf191c1e1e31b718",
+    "totalStake": "2847350543238379708891073",
+    "operatorStakes": {
+      "0": "1623727485362652166963728",
+      "1": "1223623057875727541927345"
+    },
+    "rewards": {
+      "0": "729131197716928",
+      "1": "291652479086771"
+    }
+  },
+  {
+    "domainId": 0,
+    "epoch": 2260,
+    "startBlock": 4123131,
+    "startHash": "0xf7f21da138bf6cc5d916b86090602af5888b5b4675e256921801ea3789c6bd48",
+    "endBlock": 4123245,
+    "endHash": "0x1030ba9e1e4f89a7c022df26cd60b76514a6b4b4f122b8f99131eee22ce1cf47",
+    "totalStake": "2847350544248955548926736",
+    "operatorStakes": {
+      "0": "1623727486084492052703487",
+      "1": "1223623058164463496223249"
+    },
+    "rewards": {
+      "0": "680522455797866",
+      "1": "340261227898933"
+    }
+  },
+  {
+    "domainId": 0,
+    "epoch": 2261,
+    "startBlock": 4123246,
+    "startHash": "0xc87b9e32729165ae4833253dd0ff95e781ac5216e02d96d5914ba3afefa91afb",
+    "endBlock": 4123368,
+    "endHash": "0xb621da828931f106efa96e0bfc6052cf4c0c2ed492c4b3a188bcfe843d07662f",
+    "totalStake": "2847382545259531395786568",
+    "operatorStakes": {
+      "0": "1623739486758209283943375",
+      "1": "1223643058501322111843193"
+    },
+    "rewards": {
+      "1": "1020783690431800"
+    }
+  },
+  {
+    "domainId": 0,
+    "epoch": 2262,
+    "startBlock": 4123369,
+    "startHash": "0xe055827f61b1f5957c1543cbf8d781b0bfc67da05fab5661f4383f09c4560aa2",
+    "endBlock": 4123494,
+    "endHash": "0x36532def765b7541cd329c0ff8c75ed73f66bffeabf6dc256ab83929c8c259a3",
+    "totalStake": "2850582546270107249314050",
+    "operatorStakes": {
+      "0": "1624939486758209283943375",
+      "1": "1225643059511897965370675"
+    },
+    "rewards": {
+      "1": "1020783697344400"
+    }
+  },
+  {
+    "domainId": 0,
+    "epoch": 2263,
+    "startBlock": 4123495,
+    "startHash": "0xca3e17a61bc3c80210d30d78e71599425f8abd31fa951e737585e50368e46ac4",
+    "endBlock": 4123621,
+    "endHash": "0x567d660f429d3770d52e32c48de2f50dd4d54d7292b26525fd6d57c5f259643c",
+    "totalStake": "2850582547280683109685006",
+    "operatorStakes": {
+      "0": "1624939486758209283943375",
+      "1": "1225643060522473825741631"
+    },
+    "rewards": {
+      "0": "518798217049705",
+      "1": "510391852023200"
+    }
+  },
+  {
+    "domainId": 0,
+    "epoch": 2264,
+    "startBlock": 4123622,
+    "startHash": "0xbc8c4336df5f36067c91f44ad9414affee5968e3d34613d3adf7e9a0442ec2c2",
+    "endBlock": 4123744,
+    "endHash": "0x06dce9768782d439508cc44ec8c6d6ffb2a64e7c9f1cca382fce2271e0eba550",
+    "totalStake": "2850582548299581278067182",
+    "operatorStakes": {
+      "0": "1624939487271819518822583",
+      "1": "1225643061027761759244599"
+    },
+    "rewards": {
+      "0": "1239523082832828",
+      "1": "802044346466371"
+    }
+  },
+  {
+    "domainId": 0,
+    "epoch": 2265,
+    "startBlock": 4123745,
+    "startHash": "0x338214350c9ccc6554676adb96e0eab91f689fc33592b4b5e154407852c4f4cd",
+    "endBlock": 4123872,
+    "endHash": "0x525ad90705c52662ee85f3aec7d5c390a28895dcb4f68753071ebe9dd0c04f62",
+    "totalStake": "2850582550320733033073390",
+    "operatorStakes": {
+      "0": "1624939488498947370827083",
+      "1": "1225643061821785662246307"
+    },
+    "rewards": {
+      "0": "680522483295266",
+      "1": "340261241647633"
+    }
+  },
+  {
+    "domainId": 0,
+    "epoch": 2266,
+    "startBlock": 4123873,
+    "startHash": "0xae340a9775018674bbd225fb9c5fe0036090d5b05647d75ac837711c0e9268fd",
+    "endBlock": 4123994,
+    "endHash": "0xbdde15bd7b811d194bb574fc14a1314c1eb0c941a0cb205b5feb46dd3af06f75",
+    "totalStake": "2850582551331308920766861",
+    "operatorStakes": {
+      "0": "1624939489172664629289397",
+      "1": "1225643062158644291477464"
+    },
+    "rewards": {
+      "0": "510245858540450",
+      "1": "510245858540450"
+    }
+  },
+  {
+    "domainId": 0,
+    "epoch": 2267,
+    "startBlock": 4123995,
+    "startHash": "0x6599055df41dcb6156cdf298a7e482778acec07eefcbba2183e2d810695391f4",
+    "endBlock": 4124110,
+    "endHash": "0x27119ead054f660ccb6c2032211229aaf0612af00c3f236593407b36c5524463",
+    "totalStake": "2850582552341595720676953",
+    "operatorStakes": {
+      "0": "1624939489677808029244443",
+      "1": "1225643062663787691432510"
+    },
+    "rewards": {
+      "1": "1020491723490100"
+    }
   }
 ]
