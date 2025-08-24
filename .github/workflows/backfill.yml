@@ -10,6 +10,9 @@ on:
       to:
         description: 'End epoch (inclusive) or "current"'
         required: false
+  push:
+    branches:
+      - main
 permissions:
   contents: write
 concurrency:
@@ -17,6 +20,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   backfill:
+    if: ${{ github.actor != 'github-actions[bot]' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
